@@ -1,0 +1,3 @@
+-keep class com.google.android.filament.** { *; }
+-keep class com.google.android.filament.gltfio.** { *; }
+-keep class com.google.android.filament.utils.** { *; }
