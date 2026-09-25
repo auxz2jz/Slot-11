@@ -8,7 +8,19 @@ object ModelImporter {
 
     fun prepare(fileName: String, bytes: ByteArray): PreparedModel {
         return when (val ext = extension(fileName)) {
-            "glb" -> PreparedModel(bytes, false, ModelStats("GLB", bytes.size.toLong()))
+            "glb" -> {
+                val repaired = GlbRepair.prepare(bytes)
+                val label = if (repaired.generatedNormals > 0 || repaired.assignedFallbackMaterials > 0) {
+                    "GLB (auto-repaired)"
+                } else {
+                    "GLB"
+                }
+                PreparedModel(
+                    repaired.bytes,
+                    false,
+                    ModelStats(label, bytes.size.toLong())
+                )
+            }
             "gltf" -> PreparedModel(bytes, true, ModelStats("glTF", bytes.size.toLong()))
             "stl" -> fromMesh("STL", bytes, StlParser.parse(fileName, bytes))
             "obj" -> fromMesh("OBJ", bytes, ObjParser.parse(fileName, bytes))
