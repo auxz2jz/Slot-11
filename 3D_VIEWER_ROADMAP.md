@@ -5,6 +5,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 ## 1. Core viewer
 - DONE Native Android project.
 - DONE Filament GLB/glTF renderer.
+- DONE GLB auto-repair for missing normals and missing explicit materials.
 - DONE Orbit, pan, pinch zoom.
 - DONE Fit/reset model.
 - DONE File picker.
@@ -49,6 +50,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO Solid + edges.
 - TODO X-ray / transparency.
 - TODO Normals visualization.
+- DONE Automatic normal generation for GLB triangle meshes that omit NORMAL attributes.
 - TODO Face orientation / backface diagnostic colors.
 - TODO UV checker.
 - TODO Bounding box.
