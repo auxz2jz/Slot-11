@@ -28,18 +28,19 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 ## 2. File formats
 - DONE GLB.
 - PARTIAL glTF 2.0: embedded/data resources work; external sidecars need folder resolution.
-- DONE STL binary + ASCII.
+- DONE STL binary + ASCII; imported normals normalized/validated.
 - PARTIAL OBJ: geometry works; MTL/materials/textures pending.
 - PARTIAL PLY: ASCII triangle meshes work; binary pending.
 - DONE OFF triangle/polygon meshes.
-- PARTIAL 3MF: mesh geometry works; components/materials/textures pending.
+- PARTIAL 3MF: multi-object builds, local index offsets, build transforms and components work; materials/textures/slicer metadata pending.
+- PARTIAL AMF: triangle mesh geometry works, including plain/compressed AMF; advanced materials/constellations pending.
 - TODO Draco and Meshopt extension validation.
 - TODO FBX (likely Assimp-backed importer).
 - TODO Collada DAE.
 - TODO USD / USDA / USDC / USDZ investigation.
-- TODO STEP / STP and IGES / IGS via CAD kernel/conversion path.
+- TODO STEP / STP and IGES / IGS via Open CASCADE Android native/JNI CAD importer path.
 - TODO VRML/WRL.
-- TODO X3D.
+- PARTIAL X3D: common IndexedFaceSet / IndexedTriangleSet / TriangleSet geometry and basic transforms work; advanced X3D scene features pending.
 - TODO point-cloud modes for XYZ / PTS / LAS/LAZ where practical.
 
 ## 3. Display modes
@@ -153,4 +154,4 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO FPS/frame-time diagnostics.
 - TODO GPU/backend diagnostics.
 - TODO Crash-safe last-session recovery.
-- TODO Automated importer fixtures and parser tests.
+- PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
