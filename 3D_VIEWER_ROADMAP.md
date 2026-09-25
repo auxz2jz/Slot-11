@@ -15,6 +15,9 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE Quality presets.
 - DONE Background presets.
 - DONE Sun brightness presets.
+- DONE System-bar-safe phone layout.
+- DONE Compact five-button top and bottom control rows.
+- DONE Studio ambient/fill lighting presets.
 - DONE glTF animation play/pause and next animation.
 - TODO Auto-rotate with adjustable speed/direction.
 - TODO Perspective / orthographic projection switch.
@@ -52,8 +55,8 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO World axes triad.
 - TODO Grid and adjustable grid spacing.
 - TODO Ground plane and shadows.
-- TODO Environment/IBL presets.
-- TODO Custom light direction, color, exposure and tone mapping.
+- PARTIAL Environment/IBL presets: neutral irradiance + Soft/Studio/Bright presets implemented; HDR cubemap environments pending.
+- PARTIAL Custom lighting: sun intensity and studio fill setup implemented; interactive direction/color/exposure/tone mapping pending.
 - TODO Material override color / metallic / roughness.
 
 ## 4. Scene & object controls
