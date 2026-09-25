@@ -18,12 +18,15 @@ import android.view.Choreographer
 import android.view.Gravity
 import android.view.SurfaceView
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.filament.EntityManager
+import com.google.android.filament.IndirectLight
+import com.google.android.filament.LightManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.View as FilamentView
 import com.google.android.filament.utils.ModelViewer
@@ -49,6 +52,8 @@ class MainActivity : Activity() {
     private var currentName = "No model"
     private var currentStats = ModelStats("—", 0)
     private var quality = 1
+    private var indirectLight: IndirectLight? = null
+    private val fillLights = mutableListOf<Int>()
 
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -64,12 +69,13 @@ class MainActivity : Activity() {
         window.navigationBarColor = Color.rgb(18, 18, 18)
         buildUi()
         viewer = ModelViewer(surface)
+        configureStudioLighting()
         surface.setOnTouchListener { _, event ->
             viewer.onTouchEvent(event)
             true
         }
         configureBalancedQuality()
-        setBackground(0.035, 0.04, 0.05)
+        setBackground(0.07, 0.075, 0.085)
         choreographer = Choreographer.getInstance()
         if (intent?.action == Intent.ACTION_VIEW) intent.data?.let(::loadUri)
     }
@@ -90,6 +96,19 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         runCatching { viewer.destroyModel() }
+        runCatching {
+            fillLights.forEach { entity ->
+                viewer.scene.removeEntity(entity)
+                viewer.engine.lightManager.destroy(entity)
+                EntityManager.get().destroy(entity)
+            }
+            fillLights.clear()
+            indirectLight?.let {
+                viewer.scene.indirectLight = null
+                viewer.engine.destroyIndirectLight(it)
+            }
+            indirectLight = null
+        }
         super.onDestroy()
     }
 
@@ -112,7 +131,24 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi() {
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            setOnApplyWindowInsetsListener { view, insets ->
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                    view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                } else {
+                    @Suppress("DEPRECATION")
+                    view.setPadding(
+                        insets.systemWindowInsetLeft,
+                        insets.systemWindowInsetTop,
+                        insets.systemWindowInsetRight,
+                        insets.systemWindowInsetBottom
+                    )
+                }
+                insets
+            }
+        }
         surface = SurfaceView(this)
         root.addView(surface, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
@@ -124,62 +160,59 @@ class MainActivity : Activity() {
         addButton(top, "Fit") { if (viewer.asset != null) viewer.resetToDefaultState() }
         addButton(top, "Info") { showInfo() }
         addButton(top, "Shot") { captureScreenshot() }
-        val topScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            setBackgroundColor(0xAA111111.toInt())
-            addView(top)
-        }
-        root.addView(topScroll, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(52), Gravity.TOP
+        root.addView(top, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(46), Gravity.TOP
         ))
 
         val bottom = horizontalBar()
         addButton(bottom, "Anim") { toggleAnimation() }
-        addButton(bottom, "Next anim") { nextAnimation() }
+        addButton(bottom, "Next") { nextAnimation() }
         addButton(bottom, "Quality") { cycleQuality() }
         addButton(bottom, "Display") { showDisplayOptions() }
         addButton(bottom, "Help") { showHelp() }
-        val bottomScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            setBackgroundColor(0xAA111111.toInt())
-            addView(bottom)
-        }
-        root.addView(bottomScroll, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(52), Gravity.BOTTOM
+        root.addView(bottom, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(46), Gravity.BOTTOM
         ))
 
         status = TextView(this).apply {
             text = "Open GLB, glTF, STL, OBJ, PLY, OFF, or 3MF"
             setTextColor(Color.WHITE)
             setBackgroundColor(0x88000000.toInt())
-            textSize = 13f
-            setPadding(dp(10), dp(6), dp(10), dp(6))
+            textSize = 12f
+            setPadding(dp(8), dp(5), dp(8), dp(5))
         }
         val sp = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            topMargin = dp(58)
-            leftMargin = dp(6)
+            topMargin = dp(50)
+            leftMargin = dp(5)
         }
         root.addView(status, sp)
         setContentView(root)
+        root.requestApplyInsets()
     }
 
     private fun horizontalBar() = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(4), dp(4), dp(4), dp(4))
+        setBackgroundColor(0xAA111111.toInt())
+        setPadding(dp(2), dp(3), dp(2), dp(3))
     }
 
     private fun addButton(parent: LinearLayout, label: String, action: () -> Unit) {
         parent.addView(Button(this).apply {
             text = label
             isAllCaps = false
+            textSize = 11f
             minWidth = 0
-            setPadding(dp(12), 0, dp(12), 0)
+            minimumWidth = 0
+            minHeight = 0
+            minimumHeight = 0
+            includeFontPadding = false
+            setPadding(dp(2), 0, dp(2), 0)
             setOnClickListener { action() }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)))
+        }, LinearLayout.LayoutParams(0, dp(38), 1f))
     }
 
     private fun openFile() {
@@ -352,19 +385,60 @@ class MainActivity : Activity() {
 
     private fun showDisplayOptions() {
         val options = arrayOf(
-            "Background: black", "Background: dark gray", "Background: light gray",
+            "Background: black", "Background: studio gray", "Background: light gray",
+            "Lighting: soft", "Lighting: studio", "Lighting: bright",
             "Sun: 50%", "Sun: 100%", "Sun: 150%"
         )
         AlertDialog.Builder(this).setTitle("Display").setItems(options) { _, which ->
             when (which) {
                 0 -> setBackground(0.0, 0.0, 0.0)
-                1 -> setBackground(0.035, 0.04, 0.05)
+                1 -> setBackground(0.07, 0.075, 0.085)
                 2 -> setBackground(0.35, 0.35, 0.35)
-                3 -> setSunIntensity(50_000f)
-                4 -> setSunIntensity(100_000f)
-                5 -> setSunIntensity(150_000f)
+                3 -> setLightingPreset(12_000f, 65_000f, "Soft")
+                4 -> setLightingPreset(22_000f, 90_000f, "Studio")
+                5 -> setLightingPreset(34_000f, 115_000f, "Bright")
+                6 -> setSunIntensity(50_000f)
+                7 -> setSunIntensity(100_000f)
+                8 -> setSunIntensity(150_000f)
             }
         }.show()
+    }
+
+    private fun configureStudioLighting() {
+        val ambient = IndirectLight.Builder()
+            .irradiance(1, floatArrayOf(0.55f, 0.58f, 0.62f))
+            .intensity(22_000f)
+            .build(viewer.engine)
+        indirectLight = ambient
+        viewer.scene.indirectLight = ambient
+
+        addFillLight(-0.35f, -0.45f, -0.82f, 24_000f, 1.0f, 0.96f, 0.92f)
+        addFillLight(0.72f, -0.30f, 0.62f, 14_000f, 0.90f, 0.95f, 1.0f)
+
+        val manager = viewer.engine.lightManager
+        manager.setIntensity(manager.getInstance(viewer.light), 90_000f)
+    }
+
+    private fun addFillLight(
+        x: Float, y: Float, z: Float, intensity: Float,
+        r: Float, g: Float, b: Float
+    ) {
+        val entity = EntityManager.get().create()
+        LightManager.Builder(LightManager.Type.DIRECTIONAL)
+            .direction(x, y, z)
+            .color(r, g, b)
+            .intensity(intensity)
+            .castShadows(false)
+            .build(viewer.engine, entity)
+        viewer.scene.addEntity(entity)
+        fillLights += entity
+    }
+
+    private fun setLightingPreset(environment: Float, sun: Float, name: String) {
+        indirectLight?.setIntensity(environment)
+        val manager = viewer.engine.lightManager
+        manager.setIntensity(manager.getInstance(viewer.light), sun)
+        toast("$name lighting")
     }
 
     private fun setBackground(r: Double, g: Double, b: Double) {
@@ -475,7 +549,7 @@ class MainActivity : Activity() {
                 Shot: save the rendered view as PNG.
                 Anim / Next anim: glTF animation controls.
                 Quality: Performance / Balanced / High.
-                Display: background and sun brightness.
+                Display: background, studio lighting and sun brightness.
 
                 Supported now:
                 GLB, embedded glTF, STL, OBJ geometry, ASCII PLY, OFF and 3MF geometry.
