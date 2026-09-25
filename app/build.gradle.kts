@@ -4,7 +4,11 @@ plugins {
 
 android {
     namespace = "com.edgar.viewer3d"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         applicationId = "com.edgar.viewer3d"
