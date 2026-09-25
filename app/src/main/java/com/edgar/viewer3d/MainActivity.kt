@@ -175,7 +175,7 @@ class MainActivity : Activity() {
         ))
 
         status = TextView(this).apply {
-            text = "Open GLB, glTF, STL, OBJ, PLY, OFF, or 3MF"
+            text = "Open GLB, glTF, STL, OBJ, 3MF, AMF, X3D, PLY, or OFF"
             setTextColor(Color.WHITE)
             setBackgroundColor(0x88000000.toInt())
             textSize = 12f
@@ -221,7 +221,7 @@ class MainActivity : Activity() {
             type = "*/*"
             putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
                 "model/gltf-binary", "model/gltf+json", "model/stl", "model/obj",
-                "model/3mf", "application/sla", "application/octet-stream", "text/plain"
+                "model/3mf", "model/x3d+xml", "application/xml", "text/xml", "application/sla", "application/octet-stream", "text/plain"
             ))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
@@ -231,7 +231,7 @@ class MainActivity : Activity() {
     private fun loadUri(uri: Uri) {
         val name = displayName(uri) ?: uri.lastPathSegment ?: "model"
         if (!ModelImporter.isSupported(name)) {
-            toast("Unsupported extension. Use GLB, glTF, STL, OBJ, PLY, OFF, or 3MF.")
+            toast("Unsupported extension. Use GLB, glTF, STL, OBJ, 3MF, AMF, X3D, PLY, or OFF.")
             return
         }
         status.text = "Loading $name…"
@@ -552,7 +552,7 @@ class MainActivity : Activity() {
                 Display: background, studio lighting and sun brightness.
 
                 Supported now:
-                GLB, embedded glTF, STL, OBJ geometry, ASCII PLY, OFF and 3MF geometry.
+                GLB, embedded glTF, STL, OBJ, 3MF, AMF, X3D, ASCII PLY and OFF geometry.
 
                 Planned: measurements, wireframe/edges, orthographic and named views,
                 section planes, exploded view, annotations, scene hierarchy, mesh
