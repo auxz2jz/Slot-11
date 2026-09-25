@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -24,8 +24,41 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Verify preinstalled Android 36 SDK
-        run: test -d "$ANDROID_SDK_ROOT/platforms/android-36"
+      - name: Verify Android SDK and choose NDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -d "$ANDROID_SDK_ROOT/platforms/android-36"
+          test -d "$ANDROID_SDK_ROOT/ndk"
+          NDK_VERSION="$(ls "$ANDROID_SDK_ROOT/ndk" | sort -V | tail -n 1)"
+          test -n "$NDK_VERSION"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "Using NDK $NDK_VERSION"
+
+      - name: Cache OCCT Android arm64 build
+        id: occt-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/occt/arm64-v8a
+            app/src/main/jniLibs/arm64-v8a
+          key: occt-8.0.1-android-arm64-api26-stepmesh-v1
+
+      - name: Build OCCT 8.0.1 STEP + mesh toolkits for Android
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch V8.0.1 https://github.com/Open-Cascade-SAS/OCCT.git occt-src
+
+          cmake -S occt-src -B occt-build -G Ninja             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-26             -DANDROID_STL=c++_shared             -DCMAKE_BUILD_TYPE=Release             -DBUILD_LIBRARY_TYPE=Shared             -DBUILD_CPP_STANDARD=C++17             -DBUILD_RELEASE_DISABLE_EXCEPTIONS=OFF             -DBUILD_USE_PCH=OFF             -DBUILD_RESOURCES=OFF             -DBUILD_MODULE_FoundationClasses=OFF             -DBUILD_MODULE_ModelingData=OFF             -DBUILD_MODULE_ModelingAlgorithms=OFF             -DBUILD_MODULE_Visualization=OFF             -DBUILD_MODULE_ApplicationFramework=OFF             -DBUILD_MODULE_DataExchange=OFF             -DBUILD_MODULE_Draw=OFF             -DBUILD_ADDITIONAL_TOOLKITS="TKDESTEP TKMesh"             -DUSE_FREETYPE=OFF             -DUSE_TK=OFF             -DUSE_TBB=OFF             -DUSE_FREEIMAGE=OFF             -DUSE_RAPIDJSON=OFF             -DUSE_DRACO=OFF             -DUSE_FFMPEG=OFF             -DUSE_OPENVR=OFF             -DUSE_EIGEN=OFF             -DINSTALL_DIR="$GITHUB_WORKSPACE/app/occt/arm64-v8a"
+
+          cmake --build occt-build --target install --parallel 4
+
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          find app/occt/arm64-v8a -type f -name '*.so' -print -exec cp -f {} app/src/main/jniLibs/arm64-v8a/ \;
+          test -n "$(find app/src/main/jniLibs/arm64-v8a -maxdepth 1 -name '*.so' -print -quit)"
+          find app/occt/arm64-v8a -type f -name STEPControl_Reader.hxx -print -quit | grep -q .
 
       - name: Set up Gradle 9.6
         uses: gradle/actions/setup-gradle@v4
@@ -38,6 +71,6 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Android3DViewer-v0.4.0-debug
+          name: Android3DViewer-v0.5.0-debug-arm64
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
