@@ -4,7 +4,7 @@
 - Repository: **auxz2jz/Slot-11**
 - Project: Android 3D Viewer / Model Inspector
 - Package: `com.edgar.viewer3d`
-- Current development version: **v0.3.0**
+- Current development version: **v0.4.0**
 - This file is the first source of truth for future work.
 - Read this file before making changes. Then read `3D_VIEWER_ROADMAP.md`.
 
@@ -49,6 +49,30 @@ Known v0.1.0 limitations:
 - CAD/B-rep formats such as STEP/IGES need a dedicated conversion/import backend.
 - FBX/DAE/USD family is roadmap work.
 - Measurement, section planes, wireframe/edge overlay, exploded view, AR, scene tree, annotations, and mesh-repair diagnostics are roadmap work.
+
+## v0.4.0 3D-printing compatibility pass
+User-provided regression corpus inspected on 2026-09-25 (files were used for diagnostics, not committed to the repository):
+- Smoker_Assembly_Open_75deg_Outlined.stl: binary STL, 3,868 triangles, valid correctly oriented normals, no degenerate triangles found.
+- Smoker_Assembly_Closed_Outlined.stl: binary STL, 3,868 triangles, valid correctly oriented normals, no degenerate triangles found.
+- 01_Door_Bracket_1_SLA_Prototype.obj: 2,296 vertices, 4,612 triangle faces, geometry-only OBJ (no source normals/material library).
+- 02_Door_Bracket_2_Hex_Capture_SLA_Prototype.obj: 3,210 vertices, 6,440 triangle faces, geometry-only OBJ (no source normals/material library).
+- Creality K2 SE / K1C / Anycubic Photon CHITUBOX 3MF test files: each contains 4 build objects, 230,488 vertices and 461,016 triangles; every local triangle index is valid.
+
+Critical 3MF bug found and fixed:
+- Old parser concatenated all 3MF vertices globally while leaving each object's indices local, so objects after the first could point at the wrong vertices.
+- New 3MF parser preserves per-object index spaces, applies correct global offsets, follows build items, supports component references/transforms, validates indices, and then flattens the build for Filament.
+
+Additional v0.4.0 work:
+- Existing imported normals are normalized before rendering; invalid normals fall back to generated normals.
+- Added AMF mesh import (plain XML and compressed AMF/XML containers).
+- Added common X3D IndexedFaceSet / IndexedTriangleSet / TriangleSet import with basic Transform support.
+- UI/file picker/help updated for AMF and X3D.
+- Normal generation was optimized after the verified v0.4.0 correctness build to avoid per-triangle temporary allocations on very large meshes.
+
+3D-printing format priority:
+- Primary working mesh formats: STL, 3MF, OBJ, AMF, GLB/glTF, X3D, PLY (ASCII), OFF.
+- STEP/STP and IGES/IGS require a CAD/B-rep kernel rather than a triangle parser. Official Open CASCADE Android Kotlin/JNI sample was identified as the intended native path for future STEP/IGES support.
+- OBJ MTL/textures, binary PLY, full 3MF material/texture extensions, and slicer-specific 3MF metadata remain follow-up work.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
