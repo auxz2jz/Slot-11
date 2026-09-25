@@ -1,11 +1,7 @@
 package com.edgar.viewer3d
 
-import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Locale
-import java.util.zip.ZipInputStream
-import javax.xml.parsers.DocumentBuilderFactory
 
 object StlParser {
     fun parse(name: String, bytes: ByteArray): MeshData {
@@ -195,51 +191,5 @@ object OffParser {
         }
         require(idx.size >= 3) { "OFF contains no polygon faces." }
         return MeshData(name, pos, null, idx.toIntArray()).withGeneratedNormals()
-    }
-}
-
-object ThreeMfParser {
-    fun parse(name: String, bytes: ByteArray): MeshData {
-        var modelBytes: ByteArray? = null
-        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
-            while (true) {
-                val entry = zip.nextEntry ?: break
-                if (!entry.isDirectory && entry.name.lowercase(Locale.US).endsWith(".model")) {
-                    modelBytes = zip.readBytes()
-                    if (entry.name.lowercase(Locale.US).contains("3d/")) break
-                }
-            }
-        }
-        val xml = modelBytes ?: error("3MF package contains no .model document.")
-        val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true
-            try { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) } catch (_: Exception) {}
-            try { setFeature("http://xml.org/sax/features/external-general-entities", false) } catch (_: Exception) {}
-            try { setFeature("http://xml.org/sax/features/external-parameter-entities", false) } catch (_: Exception) {}
-        }
-        val doc = factory.newDocumentBuilder().parse(ByteArrayInputStream(xml))
-        val unit = doc.documentElement.getAttribute("unit").ifBlank { "millimeter" }
-
-        var vertices = doc.getElementsByTagNameNS("*", "vertex")
-        if (vertices.length == 0) vertices = doc.getElementsByTagName("vertex")
-        val pos = FloatArray(vertices.length * 3)
-        for (i in 0 until vertices.length) {
-            val e = vertices.item(i) as org.w3c.dom.Element
-            pos[i * 3] = e.getAttribute("x").toFloat()
-            pos[i * 3 + 1] = e.getAttribute("y").toFloat()
-            pos[i * 3 + 2] = e.getAttribute("z").toFloat()
-        }
-
-        var triangles = doc.getElementsByTagNameNS("*", "triangle")
-        if (triangles.length == 0) triangles = doc.getElementsByTagName("triangle")
-        val idx = IntArray(triangles.length * 3)
-        for (i in 0 until triangles.length) {
-            val e = triangles.item(i) as org.w3c.dom.Element
-            idx[i * 3] = e.getAttribute("v1").toInt()
-            idx[i * 3 + 1] = e.getAttribute("v2").toInt()
-            idx[i * 3 + 2] = e.getAttribute("v3").toInt()
-        }
-        require(pos.isNotEmpty() && idx.isNotEmpty()) { "3MF contains no directly readable triangle mesh." }
-        return MeshData(name, pos, null, idx, unit).withGeneratedNormals()
     }
 }
