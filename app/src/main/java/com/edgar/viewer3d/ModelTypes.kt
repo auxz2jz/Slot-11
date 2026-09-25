@@ -66,9 +66,9 @@ data class MeshData(
             val nx = uy * vz - uz * vy
             val ny = uz * vx - ux * vz
             val nz = ux * vy - uy * vx
-            for (v in intArrayOf(ia, ib, ic)) {
-                out[v * 3] += nx; out[v * 3 + 1] += ny; out[v * 3 + 2] += nz
-            }
+            out[ia * 3] += nx; out[ia * 3 + 1] += ny; out[ia * 3 + 2] += nz
+            out[ib * 3] += nx; out[ib * 3 + 1] += ny; out[ib * 3 + 2] += nz
+            out[ic * 3] += nx; out[ic * 3 + 1] += ny; out[ic * 3 + 2] += nz
             t += 3
         }
         var i = 0
