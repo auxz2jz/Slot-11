@@ -24,12 +24,8 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android 37 SDK
-        shell: bash
-        run: |
-          SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
+      - name: Verify preinstalled Android 36 SDK
+        run: test -d "$ANDROID_SDK_ROOT/platforms/android-36"
 
       - name: Set up Gradle 9.6
         uses: gradle/actions/setup-gradle@v4
