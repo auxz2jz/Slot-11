@@ -37,7 +37,23 @@ data class MeshData(
     }
 
     fun withGeneratedNormals(): MeshData {
-        if (normals != null && normals.size == positions.size && normals.any { abs(it) > 0.000001f }) return this
+        if (normals != null && normals.size == positions.size && normals.any { abs(it) > 0.000001f }) {
+            val normalized = FloatArray(normals.size)
+            var valid = 0
+            var i = 0
+            while (i < normals.size) {
+                val x = normals[i]; val y = normals[i + 1]; val z = normals[i + 2]
+                val len = sqrt(x * x + y * y + z * z)
+                if (len.isFinite() && len > 0.000001f) {
+                    normalized[i] = x / len
+                    normalized[i + 1] = y / len
+                    normalized[i + 2] = z / len
+                    valid++
+                }
+                i += 3
+            }
+            if (valid == positions.size / 3) return copy(normals = normalized)
+        }
         val out = FloatArray(positions.size)
         var t = 0
         while (t + 2 < indices.size) {
