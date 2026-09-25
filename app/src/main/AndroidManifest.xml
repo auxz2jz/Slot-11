@@ -31,6 +31,8 @@
                 <data android:scheme="content" android:mimeType="application/sla" />
                 <data android:scheme="content" android:mimeType="model/obj" />
                 <data android:scheme="content" android:mimeType="model/3mf" />
+                <data android:scheme="content" android:mimeType="model/step" />
+                <data android:scheme="content" android:mimeType="application/step" />
                 <data android:scheme="content" android:mimeType="model/x3d+xml" />
                 <data android:scheme="content" android:mimeType="application/xml" />
                 <data android:scheme="content" android:mimeType="text/xml" />
