@@ -5,6 +5,7 @@
 - Project: Android 3D Viewer / Model Inspector
 - Package: `com.edgar.viewer3d`
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
+- Permanent tested checkpoint branch: `stable/v0.4.0-tested`
 - Current feature branch under development: **v0.5.0 STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
 - This file is the first source of truth for future work.
 - Read this file before making changes. Then read `3D_VIEWER_ROADMAP.md`.
@@ -85,6 +86,7 @@ Additional v0.4.0 work:
 - That attempt proved OCCT 8.0.1 itself cross-compiles successfully with the GitHub Android NDK. The APK build failed afterward because Android cross-CMake did not resolve an installed OCCT header through `find_path()`, even though the header existed.
 - Recovery fix: use the explicit installed include directory `app/occt/arm64-v8a/include/opencascade` and verify `STEPControl_Reader.hxx` with `EXISTS`, avoiding NDK root-path interference.
 - CI rule for native dependencies: build/cache/upload OCCT in a dedicated job first; the Android APK job downloads that completed artifact. A later bridge/compiler failure must not force another OCCT rebuild.
+- STEP regression fixture: `test-fixtures/occt_screw.step`, pinned from OCCT `V8.0.1` `data/step/screw.step`; use it as the first known-good STEP device test before testing larger/user CAD files.
 - Do not merge v0.5.0 into `main` until the feature-branch APK compiles successfully and STEP/STP is tested on-device.
 - Do not poll the same long-running workflow repeatedly. Inspect the final job result/log once it completes; if it fails, fix the exact reported failure before starting another run.
 
