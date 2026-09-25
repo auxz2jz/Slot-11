@@ -4,7 +4,7 @@
 - Repository: **auxz2jz/Slot-11**
 - Project: Android 3D Viewer / Model Inspector
 - Package: `com.edgar.viewer3d`
-- Current development version: **v0.2.0**
+- Current development version: **v0.3.0**
 - This file is the first source of truth for future work.
 - Read this file before making changes. Then read `3D_VIEWER_ROADMAP.md`.
 
