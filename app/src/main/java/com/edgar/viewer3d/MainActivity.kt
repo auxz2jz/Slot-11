@@ -207,7 +207,7 @@ class MainActivity : Activity() {
                 val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: error("Android could not open the selected file.")
                 val prepared = ModelImporter.prepare(name, bytes)
-                runOnUiThread { loadPrepared(name, prepared) }
+                runOnUiThread { loadPrepared(uri, name, prepared) }
             } catch (t: Throwable) {
                 runOnUiThread {
                     status.text = "Load failed"
@@ -221,7 +221,7 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun loadPrepared(name: String, prepared: PreparedModel) {
+    private fun loadPrepared(uri: Uri, name: String, prepared: PreparedModel) {
         try {
             if (prepared.isGltfJson) {
                 viewer.loadModelGltf(ByteBuffer.wrap(prepared.bytes)) { ref -> decodeEmbeddedResource(ref) }
@@ -235,7 +235,7 @@ class MainActivity : Activity() {
             currentName = name
             val animationCount = viewer.animator?.animationCount ?: 0
             currentStats = prepared.stats.copy(animations = animationCount)
-            addRecent(intent.data ?: Uri.EMPTY, name)
+            addRecent(uri, name)
             status.text = "$name • ${prepared.stats.format}" +
                 (prepared.stats.triangles?.let { " • ${formatInt(it)} triangles" } ?: "") +
                 if (animationCount > 0) " • $animationCount anim" else ""
