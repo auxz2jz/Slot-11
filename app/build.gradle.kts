@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace = "com.edgar.viewer3d"
+    ndkVersion = "29.0.14206865"
     compileSdk {
         version = release(37) {
             minorApiLevel = 2
