@@ -21,7 +21,8 @@ Later feature-specific verification:
 - v0.6.0 Auto-rotate: user-verified
 - v0.7.0 Projection: failed device test
 - v0.7.1 Projection fix: built/checkpointed, device retest pending
-- v0.8.0 Diagnostics/guided testing: candidate, device validation required
+- v0.8.0 Diagnostics/guided testing: VIEWER_CORE user run PASS; export-result metadata defects found
+- v0.8.1 Diagnostics export/result fix: candidate, device validation required
 
 Compilation success is never user verification.
 
@@ -154,3 +155,19 @@ Every important future user-facing or background feature must add/update:
 - diagnostic-export relevance
 
 A feature is CANDIDATE when implemented/buildable and VERIFIED only after required testing succeeds.
+
+## First real guided-test package result — v0.8.0
+
+The user supplied a real exported diagnostic ZIP from the built-in VIEWER_CORE test.
+
+Result: **PASS** for all six steps: CORE_LOAD, CORE_ORBIT, CORE_PAN_ZOOM, CORE_FIT, CORE_INFO, and CORE_SCREENSHOT. The trace contained no ERROR or WARNING events, and screenshot output was objectively verified as non-empty.
+
+The package also exposed two framework defects: stale completed-test evidence keys and no self-contained final export result inside the ZIP. These are corrective targets for v0.8.1 rather than reasons to weaken the test criteria.
+
+v0.8.1 retest requirements:
+- run at least one guided test to completion;
+- export Test + Diagnostics;
+- confirm guided_test_results.json has currentStepId=null and an empty evidenceKeysForCurrentStep after completion;
+- confirm export_result.json exists and reports COMPLETED;
+- confirm the package event trace includes the export persistence stage;
+- confirm no new errors/warnings are introduced by the export finalization pass.
