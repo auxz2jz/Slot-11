@@ -28,18 +28,20 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 ## 2. File formats
 - DONE GLB.
 - PARTIAL glTF 2.0: embedded/data resources work; external sidecars need folder resolution.
-- DONE STL binary + ASCII.
+- DONE STL binary + ASCII; imported normals normalized/validated.
 - PARTIAL OBJ: geometry works; MTL/materials/textures pending.
 - PARTIAL PLY: ASCII triangle meshes work; binary pending.
 - DONE OFF triangle/polygon meshes.
-- PARTIAL 3MF: mesh geometry works; components/materials/textures pending.
+- PARTIAL 3MF: multi-object builds, local index offsets, build transforms and components work; materials/textures/slicer metadata pending.
+- PARTIAL AMF: triangle mesh geometry works, including plain/compressed AMF; advanced materials/constellations pending.
 - TODO Draco and Meshopt extension validation.
 - TODO FBX (likely Assimp-backed importer).
 - TODO Collada DAE.
 - TODO USD / USDA / USDC / USDZ investigation.
-- TODO STEP / STP and IGES / IGS via CAD kernel/conversion path.
+- PARTIAL STEP / STP: OCCT 8.0.1 Android/JNI tessellation bridge is on the v0.5.0 feature branch; CI build + device validation required before DONE.
+- TODO IGES / IGS through the same OCCT native bridge after STEP validation.
 - TODO VRML/WRL.
-- TODO X3D.
+- PARTIAL X3D: common IndexedFaceSet / IndexedTriangleSet / TriangleSet geometry and basic transforms work; advanced X3D scene features pending.
 - TODO point-cloud modes for XYZ / PTS / LAS/LAZ where practical.
 
 ## 3. Display modes
@@ -152,5 +154,17 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO LOD controls.
 - TODO FPS/frame-time diagnostics.
 - TODO GPU/backend diagnostics.
+- TODO Persistent structured diagnostic Action Trace with correlation IDs.
+- TODO Global crash/error preservation with recent-event context.
+- TODO Export Diagnostics ZIP with privacy/redaction.
+- TODO Guided **Test This Version** workflow with persistent progress and TXT/JSON reports.
 - TODO Crash-safe last-session recovery.
-- TODO Automated importer fixtures and parser tests.
+- PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
+
+## 12. Development safeguards
+- DONE Adopt current Master Instruction Library mapping/documentation without moving working Android source.
+- DONE Preserve exact v0.4.0 user-verified checkpoint on `stable/v0.4.0-tested`.
+- DONE Separate v0.5.0 STEP candidate from verified baseline.
+- DONE Add Android `TESTING.md` and `DIAGNOSTICS.md` adoption plans.
+- DONE Add `CROSS_PLATFORM_COORDINATION.md`; Windows/PC remains NOT STARTED.
+- TODO Implement diagnostics/guided testing incrementally after the current STEP candidate is device-tested, unless concrete failure evidence requires diagnostics first.
