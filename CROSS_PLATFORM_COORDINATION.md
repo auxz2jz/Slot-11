@@ -166,13 +166,13 @@ Windows: NOT STARTED
 ### F-018 — Built-in diagnostics
 Persistent correlated event logging, crash/error preservation, result validation, diagnostic export, privacy/redaction.
 
-Android: PLANNED — documentation adopted  
+Android: CANDIDATE v0.8.0 — implementation complete in source; device validation pending  
 Windows: NOT STARTED
 
 ### F-019 — Guided version testing
 Version-specific step-by-step testing with persistent progress, automatic evidence where possible, human confirmation, failure control, and test reports.
 
-Android: PLANNED — documentation adopted  
+Android: CANDIDATE v0.8.0 — implementation complete in source; device validation pending  
 Windows: NOT STARTED
 
 ## Shared requirements
