@@ -7,7 +7,8 @@
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
 - Last feature checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`candidate/v0.5.1-stl-animation-tested`)
-- Current tested feature branch: **v0.6.0 auto-rotate / turntable** (`feature/auto-rotate-v0.6.0`)
+- Last tested feature checkpoint: **v0.6.0 auto-rotate / turntable** (`candidate/v0.6.0-auto-rotate-tested`)
+- Current development branch: **v0.7.0 Perspective / Orthographic projection** (`feature/projection-v0.7.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -218,6 +219,28 @@ Feature verification:
 - full application regression remains incomplete; v0.4.0 remains the last fully regression-verified baseline
 
 Next feature: Perspective / Orthographic projection switch as v0.7.0 on a separate branch.
+
+## v0.7.0 projection implementation plan
+Goal: add a real Perspective / Orthographic camera switch while preserving orbit, pan, pinch zoom, Fit, Auto-rotate, animation, importers, and rendering.
+
+Design:
+- keep the existing UI layout unchanged;
+- add `Projection: Perspective/Orthographic` inside the existing **Display** dialog;
+- use Filament `Camera.Projection.ORTHO` for orthographic mode;
+- use ModelViewer's existing lens projection for perspective mode;
+- compute orthographic half-height from the ORBIT manipulator's current eye-to-target distance and Filament's 24 mm vertical sensor / 28 mm default focal length relationship so pinch zoom remains visually meaningful;
+- reapply orthographic projection during frames so Android surface resize cannot silently restore perspective;
+- switching back to Perspective explicitly restores ModelViewer's lens projection;
+- Auto-rotate remains compatible in either projection mode;
+- no importer, OCCT, STL, animation, or GLB conversion changes.
+
+Expected changed files:
+- `app/src/main/java/com/edgar/viewer3d/MainActivity.kt`
+- `app/build.gradle.kts`
+- `.github/workflows/android-build.yml`
+- roadmap/project documentation only as needed.
+
+Test ID: `T-015` in `TESTING.md`.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
