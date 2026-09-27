@@ -3,6 +3,7 @@ package com.edgar.viewer3d
 import android.os.SystemClock
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.time.Instant
 
 enum class GuidedStatus {
@@ -270,6 +271,7 @@ object GuidedTestController {
                 "expected" to definition.steps.first().expected
             )
         )
+        persistState()
         return definition.steps.first()
     }
 
@@ -291,6 +293,7 @@ object GuidedTestController {
                 "details" to details
             )
         )
+        persistState()
     }
 
     fun missingEvidenceForCurrent(): List<String> {
@@ -333,6 +336,7 @@ object GuidedTestController {
             )
         )
         advanceAfterPass()
+        persistState()
         return true
     }
 
@@ -368,6 +372,7 @@ object GuidedTestController {
         DiagnosticLogger.clearTestContext()
         activeDefinition = null
         currentStepIndex = -1
+        persistState()
         return overallStatus
     }
 
@@ -395,6 +400,7 @@ object GuidedTestController {
         DiagnosticLogger.clearTestContext()
         activeDefinition = null
         currentStepIndex = -1
+        persistState()
         return overallStatus
     }
 
@@ -419,12 +425,24 @@ object GuidedTestController {
         DiagnosticLogger.clearTestContext()
         activeDefinition = null
         currentStepIndex = -1
+        persistState()
         return overallStatus
     }
 
     fun overallStatus(): GuidedStatus = overallStatus
 
     fun resultsJson(): JSONObject {
+        val memory = buildResultsJson()
+        if (!lastTestId.isNullOrBlank()) return memory
+
+        val persisted = stateFile()
+        if (!persisted.exists()) return memory
+        return runCatching {
+            JSONObject(persisted.readText())
+        }.getOrDefault(memory)
+    }
+
+    private fun buildResultsJson(): JSONObject {
         val resultArray = JSONArray()
         for (result in results) {
             resultArray.put(
@@ -437,9 +455,14 @@ object GuidedTestController {
             )
         }
 
+        val evidenceKeys = JSONArray()
+        evidence.keys.forEach { evidenceKeys.put(it) }
+
         return JSONObject()
             .put("testId", lastTestId ?: "")
+            .put("sessionId", DiagnosticLogger.sessionId)
             .put("overallStatus", overallStatus.name)
+            .put("inProgress", isActive())
             .put(
                 "completed",
                 overallStatus == GuidedStatus.PASS ||
@@ -447,17 +470,41 @@ object GuidedTestController {
                     overallStatus == GuidedStatus.BLOCKED
             )
             .put("currentStepId", currentStep()?.id ?: JSONObject.NULL)
+            .put("currentStepNumber", currentStepNumber())
             .put("startedUtc", testStartedUtc ?: JSONObject.NULL)
             .put("endedUtc", testEndedUtc ?: JSONObject.NULL)
+            .put("evidenceKeysForCurrentStep", evidenceKeys)
             .put("stepResults", resultArray)
     }
 
     fun summaryText(): String {
+        if (lastTestId.isNullOrBlank()) {
+            val persisted = resultsJson()
+            if (persisted.optString("testId").isNotBlank()) {
+                return buildString {
+                    appendLine("Guided test results")
+                    appendLine("Test ID: " + persisted.optString("testId"))
+                    appendLine("Session ID: " + persisted.optString("sessionId"))
+                    appendLine("Overall status: " + persisted.optString("overallStatus"))
+                    appendLine("In progress when last saved: " + persisted.optBoolean("inProgress"))
+                    appendLine(
+                        "Current step if interrupted: " +
+                            persisted.optString("currentStepId", "")
+                    )
+                    appendLine("Started UTC: " + persisted.optString("startedUtc", ""))
+                    appendLine("Ended UTC: " + persisted.optString("endedUtc", ""))
+                }
+            }
+        }
+
         val firstFailure = results.firstOrNull { it.status == GuidedStatus.FAIL }
         return buildString {
             appendLine("Guided test results")
             appendLine("Test ID: " + (lastTestId ?: ""))
+            appendLine("Session ID: " + DiagnosticLogger.sessionId)
             appendLine("Overall status: " + overallStatus.name)
+            appendLine("In progress: " + isActive())
+            appendLine("Current step if interrupted: " + (currentStep()?.id ?: ""))
             appendLine("Started UTC: " + (testStartedUtc ?: ""))
             appendLine("Ended UTC: " + (testEndedUtc ?: ""))
             if (firstFailure != null) {
@@ -471,6 +518,33 @@ object GuidedTestController {
                         " (" + result.durationMs + " ms) — " + result.message
                 )
             }
+        }
+    }
+
+    private fun stateFile(): File =
+        File(DiagnosticLogger.diagnosticsRoot(), "guided_test_state.json")
+
+    private fun persistState() {
+        runCatching {
+            val target = stateFile()
+            val temp = File(target.parentFile, target.name + ".tmp")
+            temp.writeText(buildResultsJson().toString(2))
+            if (!temp.renameTo(target)) {
+                target.writeText(temp.readText())
+                temp.delete()
+            }
+
+            val sessionCopy = File(
+                DiagnosticLogger.sessionDirectory(),
+                "guided_test_state.json"
+            )
+            sessionCopy.writeText(buildResultsJson().toString(2))
+        }.onFailure { t ->
+            DiagnosticLogger.error(
+                module = "GuidedTestController",
+                operation = "PERSIST_GUIDED_TEST_STATE",
+                throwable = t
+            )
         }
     }
 
@@ -491,6 +565,7 @@ object GuidedTestController {
             DiagnosticLogger.clearTestContext()
             activeDefinition = null
             currentStepIndex = -1
+            persistState()
             return
         }
 
@@ -507,5 +582,6 @@ object GuidedTestController {
                 "expected" to step.expected
             )
         )
+        persistState()
     }
 }
