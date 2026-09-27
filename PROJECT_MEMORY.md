@@ -4,9 +4,17 @@
 - Repository: **auxz2jz/Slot-11**
 - Project: Android 3D Viewer / Model Inspector
 - Package: `com.edgar.viewer3d`
-- Current development version: **v0.3.0**
-- This file is the first source of truth for future work.
-- Read this file before making changes. Then read `3D_VIEWER_ROADMAP.md`.
+- Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
+- Permanent tested checkpoint branch: `stable/v0.4.0-tested`
+- Current feature branch under development: **v0.5.0 STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
+- Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
+- Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
+- Successful v0.5.0 GitHub Actions run: `36184091026`
+- v0.5.0 APK artifact ID: `10886586045`
+- v0.5.0 artifact ZIP SHA-256: `b9bec51841664ec009c86c303054a7c44bbb9d2a32297b6c4aa050f06eb6244d`
+- v0.5.0 extracted APK SHA-256: `c4187753d08fd49311c0db74c7bcd8666a84102e88e92b205be19c77b8ad8ea8`
+- This file is the Android project memory/checkpoint source of truth.
+- Master Library startup order: read `auxz2jz/master-instruction-library/INSTRUCTION_INDEX.md` and mandatory files, then `MASTER_RULE_ADOPTION.md`, `CROSS_PLATFORM_COORDINATION.md`, this file, `3D_VIEWER_ROADMAP.md`, `TESTING.md`, and `DIAGNOSTICS.md` before substantial source work.
 
 ## Product goal
 Build a phone-friendly but progressively professional 3D model viewer that can open common mesh/model files directly on Android and grow toward CAD-style inspection tools.
@@ -50,10 +58,66 @@ Known v0.1.0 limitations:
 - FBX/DAE/USD family is roadmap work.
 - Measurement, section planes, wireframe/edge overlay, exploded view, AR, scene tree, annotations, and mesh-repair diagnostics are roadmap work.
 
+## v0.4.0 3D-printing compatibility pass
+User-provided regression corpus inspected on 2026-09-25 (files were used for diagnostics, not committed to the repository):
+- Smoker_Assembly_Open_75deg_Outlined.stl: binary STL, 3,868 triangles, valid correctly oriented normals, no degenerate triangles found.
+- Smoker_Assembly_Closed_Outlined.stl: binary STL, 3,868 triangles, valid correctly oriented normals, no degenerate triangles found.
+- 01_Door_Bracket_1_SLA_Prototype.obj: 2,296 vertices, 4,612 triangle faces, geometry-only OBJ (no source normals/material library).
+- 02_Door_Bracket_2_Hex_Capture_SLA_Prototype.obj: 3,210 vertices, 6,440 triangle faces, geometry-only OBJ (no source normals/material library).
+- Creality K2 SE / K1C / Anycubic Photon CHITUBOX 3MF test files: each contains 4 build objects, 230,488 vertices and 461,016 triangles; every local triangle index is valid.
+
+Critical 3MF bug found and fixed:
+- Old parser concatenated all 3MF vertices globally while leaving each object's indices local, so objects after the first could point at the wrong vertices.
+- New 3MF parser preserves per-object index spaces, applies correct global offsets, follows build items, supports component references/transforms, validates indices, and then flattens the build for Filament.
+
+Additional v0.4.0 work:
+- Existing imported normals are normalized before rendering; invalid normals fall back to generated normals.
+- Added AMF mesh import (plain XML and compressed AMF/XML containers).
+- Added common X3D IndexedFaceSet / IndexedTriangleSet / TriangleSet import with basic Transform support.
+- UI/file picker/help updated for AMF and X3D.
+- Normal generation was optimized after the verified v0.4.0 correctness build to avoid per-triangle temporary allocations on very large meshes.
+
+3D-printing format priority:
+- Primary working mesh formats: STL, 3MF, OBJ, AMF, GLB/glTF, X3D, PLY (ASCII), OFF.
+- STEP/STP and IGES/IGS require a CAD/B-rep kernel rather than a triangle parser. Official Open CASCADE Android Kotlin/JNI sample was identified as the intended native path for future STEP/IGES support.
+- OBJ MTL/textures, binary PLY, full 3MF material/texture extensions, and slicer-specific 3MF metadata remain follow-up work.
+
+
+## v0.5.0 STEP/STP recovery and native-integration procedure
+- Selected CAD kernel: **Open CASCADE Technology (OCCT) 8.0.1**, pinned to upstream tag `V8.0.1`.
+- Architecture: STEP/STP -> OCCT `STEPControl_Reader` -> OCCT B-rep tessellation -> packed triangle mesh -> existing `MeshData` -> existing GLB encoder -> Filament renderer.
+- Filament remains the only presentation renderer; OCCT is a headless CAD import/tessellation dependency.
+- Initial Android ABI: `arm64-v8a`.
+- The first STEP attempt was preserved on branch `archive/failed-occt-step-attempt-2026-09-25`.
+- That attempt proved OCCT 8.0.1 itself cross-compiles successfully with the GitHub Android NDK. The APK build failed afterward because Android cross-CMake did not resolve an installed OCCT header through `find_path()`, even though the header existed.
+- Recovery fix: use the explicit installed include directory `app/occt/arm64-v8a/include/opencascade` and verify `STEPControl_Reader.hxx` with `EXISTS`, avoiding NDK root-path interference.
+- CI rule for native dependencies: build/cache/upload OCCT in a dedicated job first; the Android APK job downloads that completed artifact. A later bridge/compiler failure must not force another OCCT rebuild.
+- STEP regression fixture: `test-fixtures/occt_screw.step`, pinned from OCCT `V8.0.1` `data/step/screw.step`; use it as the first known-good STEP device test before testing larger/user CAD files.
+- v0.5.0 CI compilation/package verification succeeded on run `36184091026`.
+- Do not merge v0.5.0 into the verified line until STEP/STP and the v0.4.0 regression set are tested on-device.
+- Do not poll the same long-running workflow repeatedly. Inspect the final job result/log once it completes; if it fails, fix the exact reported failure before starting another run.
+
+## Master Instruction Library adoption
+- Adopted current canonical library: `auxz2jz/master-instruction-library` on 2026-09-26.
+- Mapping record: `MASTER_RULE_ADOPTION.md`.
+- Shared multi-agent/platform coordination: `CROSS_PLATFORM_COORDINATION.md`.
+- Android diagnostic gaps/implementation order: `DIAGNOSTICS.md`.
+- Android release/guided testing mapping: `TESTING.md`.
+- No source reorganization or structural migration was performed for adoption.
+- Existing Android source/build layout remains authoritative.
+- Windows/PC implementation status: **NOT STARTED**; future Windows work must use an isolated ownership area and separate baseline/candidate records.
+
+## Current task and exact next action
+Current task: adopt the Master Instruction Library without changing verified behavior.
+
+Adoption documentation is complete. No Android source was changed by the adoption itself.
+
+**Exact next development/test action:** install and device-test the already-built v0.5.0 STEP/STP candidate using `TESTING.md` and `STEP_TEST_PLAN.md`. Keep v0.4.0 as VERIFIED until those tests pass.
+
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
 2. Make one coherent version step at a time and update the roadmap status.
-3. Preserve a buildable checkpoint before risky renderer/importer refactors.
+3. Preserve a buildable checkpoint before risky renderer/importer refactors. Native/CAD integrations must be developed on a feature branch while `main` stays on the last tested APK.
 4. Prefer tests and diagnostics over repeated speculative rewrites.
 5. If a build fails, read the exact compiler/action log and fix the actual failing API/file.
 6. Do not repeatedly retry the same failed fix without changing the hypothesis.
