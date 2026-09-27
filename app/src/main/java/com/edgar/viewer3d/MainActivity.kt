@@ -477,17 +477,40 @@ class MainActivity : Activity() {
         if (width <= 0 || height <= 0) return
 
         cameraManipulator.getLookAt(projectionEye, projectionTarget, projectionUp)
-        val dx = projectionEye[0] - projectionTarget[0]
-        val dy = projectionEye[1] - projectionTarget[1]
-        val dz = projectionEye[2] - projectionTarget[2]
-        val distance = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
-            .coerceAtLeast(0.001)
+
+        val gazeX = projectionTarget[0] - projectionEye[0]
+        val gazeY = projectionTarget[1] - projectionEye[1]
+        val gazeZ = projectionTarget[2] - projectionEye[2]
+        val gazeLength = kotlin.math.sqrt(
+            gazeX * gazeX + gazeY * gazeY + gazeZ * gazeZ
+        ).coerceAtLeast(0.001)
+
+        val unitGazeX = gazeX / gazeLength
+        val unitGazeY = gazeY / gazeLength
+        val unitGazeZ = gazeZ / gazeLength
+
+        // transformToUnitCube() places the normalized model center at (0, 0, -4).
+        // Filament ORBIT scroll moves eye and target together, so eye-to-target
+        // distance is not a zoom metric. Instead, measure camera depth to the
+        // fixed model center along the current gaze direction.
+        val modelCenterX = 0.0
+        val modelCenterY = 0.0
+        val modelCenterZ = -4.0
+        val toCenterX = modelCenterX - projectionEye[0]
+        val toCenterY = modelCenterY - projectionEye[1]
+        val toCenterZ = modelCenterZ - projectionEye[2]
+        val depthToModelCenter = kotlin.math.abs(
+            toCenterX * unitGazeX +
+                toCenterY * unitGazeY +
+                toCenterZ * unitGazeZ
+        ).coerceAtLeast(0.25)
 
         // Filament's lens projection uses a 24 mm vertical sensor. Matching the
-        // perspective framing at the target plane gives half-height:
-        // distance * (sensorHeight / 2) / focalLength.
+        // perspective framing at the model-center plane gives half-height:
+        // depth * (sensorHeight / 2) / focalLength.
         val focalLengthMm = viewer.cameraFocalLength.toDouble().coerceAtLeast(0.001)
-        val halfHeight = (distance * 12.0 / focalLengthMm).coerceAtLeast(0.001)
+        val halfHeight =
+            (depthToModelCenter * 12.0 / focalLengthMm).coerceAtLeast(0.05)
         val aspect = width.toDouble() / height.toDouble()
         val halfWidth = halfHeight * aspect
 
