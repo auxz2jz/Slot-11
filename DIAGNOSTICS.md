@@ -4,7 +4,7 @@ This project follows the current Master Instruction Library and the project's pr
 
 ## Current implementation status
 
-**v0.8.0 CANDIDATE — IMPLEMENTED IN SOURCE, DEVICE VALIDATION REQUIRED**
+**v0.8.1 CANDIDATE — v0.8.0 CORE GUIDED TEST PASSED ON DEVICE; EXPORT METADATA FIXES AWAIT RETEST**
 
 Diagnostics were designed after inspecting this application's actual controls, file/import paths, renderer state, background work, and error handling. The system does not assume controls from another application.
 
@@ -166,3 +166,13 @@ The diagnostics branch does not replace a known-good viewer merely because it co
 - v0.6.0 Auto-rotate was feature-verified
 - v0.7.1 projection fix is checkpointed separately and still requires device retest
 - v0.8.0 diagnostics/guided testing is a separate candidate until built and tested
+
+## First exported package findings
+
+A real v0.8.0 package confirmed that the event trace and guided evidence can reconstruct the user's core-viewer test without relying on memory. All VIEWER_CORE steps passed and no errors/warnings were recorded.
+
+Two defects were identified from the exported data itself:
+- export completion occurred after the original ZIP snapshot, so the package trace stopped at EXPORT_REQUESTED;
+- terminal test JSON retained stale transient evidence keys.
+
+v0.8.1 fixes these narrowly. The export now performs a verified final rewrite with a self-contained export_result.json, and terminal guided-test state clears transient step evidence. No unrelated viewer feature is redesigned.
