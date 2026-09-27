@@ -7,7 +7,7 @@
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
 - Last feature checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`candidate/v0.5.1-stl-animation-tested`)
-- Current development branch: **v0.6.0 auto-rotate / turntable** (`feature/auto-rotate-v0.6.0`)
+- Current tested feature branch: **v0.6.0 auto-rotate / turntable** (`feature/auto-rotate-v0.6.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -131,7 +131,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** preserve the v0.5.1 checkpoint, then implement auto-rotate / turntable viewing as v0.6.0 with adjustable speed and direction. Do not alter the verified STL or animation paths unnecessarily.
+**Exact next development/test action:** checkpoint user-verified v0.6.0, then implement Perspective / Orthographic projection switching as v0.7.0 without altering the working auto-rotate, STL, animation, STEP, or renderer/import paths unnecessarily.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -200,6 +200,24 @@ Expected changed files:
 - roadmap/testing/help documentation only as needed.
 
 Test ID: `T-014` in `TESTING.md`.
+
+## v0.6.0 auto-rotate user verification — 2026-09-27
+User installed the v0.6.0 APK and reported that Auto-rotate "seems to work."
+
+Build record:
+- GitHub Actions run: `36299156628`
+- result: **SUCCESS**
+- build source commit: `b1b559a1f61cb59b32f96d9e0882b98e3594d63b`
+- APK artifact: `Android3DViewer-v0.6.0-debug-arm64`
+- artifact ID: `10925590680`
+- artifact ZIP digest: `sha256:ea52a71b2097b0b65c2c31ae79c39f453bf92fd6796484933c4cc2a5c554c994`
+
+Feature verification:
+- Auto-rotate / turntable: **USER-VERIFIED**
+- existing manual orbit/pan/zoom remained usable during this test
+- full application regression remains incomplete; v0.4.0 remains the last fully regression-verified baseline
+
+Next feature: Perspective / Orthographic projection switch as v0.7.0 on a separate branch.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
