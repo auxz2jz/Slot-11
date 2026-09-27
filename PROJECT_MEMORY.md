@@ -6,7 +6,8 @@
 - Package: `com.edgar.viewer3d`
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
-- Current feature branch checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
+- Last feature checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`candidate/v0.5.1-stl-animation-tested`)
+- Current development branch: **v0.6.0 auto-rotate / turntable** (`feature/auto-rotate-v0.6.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -177,6 +178,28 @@ Feature status:
 This verification is feature-specific. The overall last fully regression-verified release remains v0.4.0 until the complete v0.5.1 regression checklist is run.
 
 **Next feature:** auto-rotate / turntable viewing with adjustable speed and direction. Implement on a separate v0.6.0 feature branch, preserving the v0.5.1 checkpoint.
+
+## v0.6.0 implementation plan
+Goal: add continuous auto-rotate/turntable viewing with adjustable speed and direction while preserving all existing viewer controls.
+
+Design:
+- keep the existing top/bottom button layout unchanged;
+- put Auto-rotate controls inside the existing **Display** dialog;
+- keep a reference to the same Filament ORBIT `Manipulator` used by ModelViewer;
+- synthesize small orbit drag updates from the existing Choreographer frame loop;
+- manual touch immediately stops Auto-rotate before normal touch orbit/pan/zoom proceeds;
+- loading a new model or pressing Fit stops Auto-rotate to avoid stale manipulator state;
+- speed options: Slow / Normal / Fast;
+- direction options: Left / Right;
+- no renderer/importer rewrite.
+
+Expected changed files:
+- `app/src/main/java/com/edgar/viewer3d/MainActivity.kt`
+- `app/build.gradle.kts`
+- `.github/workflows/android-build.yml`
+- roadmap/testing/help documentation only as needed.
+
+Test ID: `T-014` in `TESTING.md`.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
