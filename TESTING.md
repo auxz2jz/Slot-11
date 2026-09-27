@@ -105,7 +105,12 @@ These stable IDs describe test intent. UI labels should use the actual visible a
 ### T-014 — Auto-rotate / turntable
 **WHAT TO DO:** Load a static asymmetric model, open **Display**, enable Auto-rotate, change speed and direction, then touch-drag the model.
 **EXPECTED:** Model/camera orbits continuously; speed changes are obvious; direction reverses; manual touch safely stops auto-rotate so normal orbit/pan/zoom remains usable.
-**Result source:** UNTESTED until v0.6.0 device test.
+**Latest result:** **MANUAL_PASS — user verified 2026-09-27.**
+
+### T-015 — Perspective / Orthographic projection
+**WHAT TO DO:** Load the asymmetric test model, open **Display**, switch Projection between Perspective and Orthographic, then orbit/pan/pinch zoom in both modes.
+**EXPECTED:** Perspective shows normal depth convergence; Orthographic removes perspective foreshortening while keeping the model framed. Orbit/pan/pinch zoom remain usable. Switching back to Perspective restores the normal camera projection.
+**Result source:** UNTESTED until v0.7.0 device test.
 
 ## v0.5.0 STEP/STP candidate tests
 
