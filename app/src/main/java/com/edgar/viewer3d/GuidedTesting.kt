@@ -1,0 +1,511 @@
+package com.edgar.viewer3d
+
+import android.os.SystemClock
+import org.json.JSONArray
+import org.json.JSONObject
+import java.time.Instant
+
+enum class GuidedStatus {
+    PASS,
+    FAIL,
+    PARTIAL,
+    BLOCKED,
+    NOT_RUN
+}
+
+data class GuidedTestStep(
+    val id: String,
+    val title: String,
+    val instruction: String,
+    val expected: String,
+    val requiredEvidence: List<String> = emptyList(),
+    val visualConfirmationRequired: Boolean = true,
+    val timeoutMs: Long? = null
+)
+
+data class GuidedTestDefinition(
+    val id: String,
+    val title: String,
+    val description: String,
+    val steps: List<GuidedTestStep>
+)
+
+data class GuidedStepResult(
+    val stepId: String,
+    val status: GuidedStatus,
+    val durationMs: Long,
+    val message: String,
+    val measuredValues: Map<String, String> = emptyMap()
+)
+
+/**
+ * Permanent guided-testing framework for the actual Android 3D Viewer features.
+ *
+ * A user action is never sufficient evidence on its own. MainActivity and the
+ * importer/render paths record objective evidence keys after real results occur.
+ */
+object GuidedTestController {
+    private val definitions = linkedMapOf(
+        "VIEWER_CORE" to GuidedTestDefinition(
+            id = "VIEWER_CORE",
+            title = "Core viewer",
+            description = "Model load, touch navigation, Fit, Info and screenshot output.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "CORE_LOAD",
+                    title = "Load a model",
+                    instruction = "Tap Open and choose a known-good supported model.",
+                    expected = "The model is actually displayed and model statistics are available.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "CORE_ORBIT",
+                    title = "One-finger orbit",
+                    instruction = "Drag the model with one finger.",
+                    expected = "The camera orientation changes and the model orbits smoothly.",
+                    requiredEvidence = listOf("TOUCH_CAMERA_CHANGED_SINGLE"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "CORE_PAN_ZOOM",
+                    title = "Two-finger pan / pinch",
+                    instruction = "Use two fingers to pan and pinch zoom.",
+                    expected = "The camera changes in response to the multi-touch gesture.",
+                    requiredEvidence = listOf("TOUCH_CAMERA_CHANGED_MULTI"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "CORE_FIT",
+                    title = "Fit",
+                    instruction = "Tap Fit.",
+                    expected = "The viewer resets to a usable framing.",
+                    requiredEvidence = listOf("FIT_APPLIED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "CORE_INFO",
+                    title = "Model information",
+                    instruction = "Tap Info.",
+                    expected = "The information dialog is populated from the current model state.",
+                    requiredEvidence = listOf("INFO_PRESENTED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "CORE_SCREENSHOT",
+                    title = "Screenshot",
+                    instruction = "Tap Shot.",
+                    expected = "A non-empty PNG is actually written to storage.",
+                    requiredEvidence = listOf("SCREENSHOT_SAVED"),
+                    visualConfirmationRequired = false
+                )
+            )
+        ),
+        "DISPLAY_CONTROLS" to GuidedTestDefinition(
+            id = "DISPLAY_CONTROLS",
+            title = "Display controls",
+            description = "Quality, background, lighting, sun, auto-rotate and camera projection.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "DISPLAY_QUALITY",
+                    title = "Quality mode",
+                    instruction = "Tap Quality once.",
+                    expected = "The internal quality mode changes and Filament options are applied.",
+                    requiredEvidence = listOf("QUALITY_CHANGED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "DISPLAY_BACKGROUND",
+                    title = "Background",
+                    instruction = "Open Display and choose a different background.",
+                    expected = "The renderer clear color actually changes.",
+                    requiredEvidence = listOf("BACKGROUND_CHANGED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "DISPLAY_LIGHTING",
+                    title = "Lighting preset",
+                    instruction = "Open Display and choose Soft, Studio or Bright lighting.",
+                    expected = "Indirect and direct light intensities are applied.",
+                    requiredEvidence = listOf("LIGHTING_CHANGED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "DISPLAY_SUN",
+                    title = "Sun intensity",
+                    instruction = "Open Display and choose a different Sun value.",
+                    expected = "The Filament sun intensity setting changes.",
+                    requiredEvidence = listOf("SUN_CHANGED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "DISPLAY_AUTOROTATE",
+                    title = "Auto-rotate",
+                    instruction = "Start Auto-rotate and let it move the model.",
+                    expected = "Auto-rotate enters the enabled state and produces an actual camera change.",
+                    requiredEvidence = listOf("AUTO_ROTATE_CAMERA_CHANGED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "DISPLAY_PROJECTION",
+                    title = "Projection",
+                    instruction = "Switch Perspective / Orthographic and test pinch zoom.",
+                    expected = "Projection state changes, framing remains usable, and zoom visibly works.",
+                    requiredEvidence = listOf("PROJECTION_CHANGED", "TOUCH_CAMERA_CHANGED_MULTI"),
+                    visualConfirmationRequired = true
+                )
+            )
+        ),
+        "ANIMATION" to GuidedTestDefinition(
+            id = "ANIMATION",
+            title = "GLB / glTF animation",
+            description = "Embedded animation availability, play/pause and next-clip behavior.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "ANIM_LOAD",
+                    title = "Load animated model",
+                    instruction = "Open a GLB/glTF model that contains at least two animation clips.",
+                    expected = "The displayed model reports two or more animations.",
+                    requiredEvidence = listOf("ANIMATED_MODEL_LOADED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "ANIM_TOGGLE",
+                    title = "Play / pause",
+                    instruction = "Tap Anim.",
+                    expected = "The internal playback state changes and the visible animation responds.",
+                    requiredEvidence = listOf("ANIMATION_TOGGLED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "ANIM_NEXT",
+                    title = "Next animation",
+                    instruction = "Tap Next.",
+                    expected = "The active animation index changes to another valid clip.",
+                    requiredEvidence = listOf("ANIMATION_INDEX_CHANGED"),
+                    visualConfirmationRequired = true
+                )
+            )
+        ),
+        "FILE_WORKFLOW" to GuidedTestDefinition(
+            id = "FILE_WORKFLOW",
+            title = "File workflow",
+            description = "File picker, supported import result and Recent-file reload.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "FILE_PICKER_LOAD",
+                    title = "Open from Android Files",
+                    instruction = "Tap Open and select a supported model.",
+                    expected = "Android returns a file and the app displays a valid model.",
+                    requiredEvidence = listOf("FILE_PICKER_RETURNED", "MODEL_DISPLAYED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FILE_RECENT",
+                    title = "Recent reload",
+                    instruction = "Tap Recent and choose the model you just loaded.",
+                    expected = "The persisted recent entry is selected and the model is displayed again.",
+                    requiredEvidence = listOf("RECENT_SELECTED", "MODEL_DISPLAYED"),
+                    visualConfirmationRequired = true
+                )
+            )
+        )
+    )
+
+    private var activeDefinition: GuidedTestDefinition? = null
+    private var lastTestId: String? = null
+    private var currentStepIndex = -1
+    private var stepStartedElapsedMs = 0L
+    private var testStartedElapsedMs = 0L
+    private var testStartedUtc: String? = null
+    private var testEndedUtc: String? = null
+    private var overallStatus = GuidedStatus.NOT_RUN
+    private val evidence = LinkedHashMap<String, JSONObject>()
+    private val results = mutableListOf<GuidedStepResult>()
+
+    fun definitions(): List<GuidedTestDefinition> = definitions.values.toList()
+
+    fun isActive(): Boolean = activeDefinition != null && currentStepIndex >= 0
+
+    fun activeTest(): GuidedTestDefinition? = activeDefinition
+
+    fun currentStep(): GuidedTestStep? =
+        activeDefinition?.steps?.getOrNull(currentStepIndex)
+
+    fun currentStepNumber(): Int = if (isActive()) currentStepIndex + 1 else 0
+
+    fun start(testId: String): GuidedTestStep {
+        val definition = definitions[testId] ?: error("Unknown guided test: " + testId)
+        activeDefinition = definition
+        lastTestId = testId
+        currentStepIndex = 0
+        results.clear()
+        evidence.clear()
+        overallStatus = GuidedStatus.NOT_RUN
+        testStartedElapsedMs = SystemClock.elapsedRealtime()
+        stepStartedElapsedMs = testStartedElapsedMs
+        testStartedUtc = Instant.now().toString()
+        testEndedUtc = null
+
+        DiagnosticLogger.startSession(
+            label = "guided_test:" + testId,
+            testId = testId
+        )
+        DiagnosticLogger.setTestContext(testId, definition.steps.first().id)
+        DiagnosticLogger.event(
+            "TEST",
+            "GUIDED_TEST_STARTED",
+            mapOf(
+                "testId" to testId,
+                "title" to definition.title,
+                "stepCount" to definition.steps.size
+            )
+        )
+        DiagnosticLogger.event(
+            "TEST",
+            "STEP_STARTED",
+            mapOf(
+                "stepId" to definition.steps.first().id,
+                "title" to definition.steps.first().title,
+                "expected" to definition.steps.first().expected
+            )
+        )
+        return definition.steps.first()
+    }
+
+    fun recordEvidence(key: String, details: Map<String, Any?> = emptyMap()) {
+        if (!isActive()) return
+        val obj = JSONObject()
+            .put("timestampUtc", Instant.now().toString())
+            .put("elapsedMs", SystemClock.elapsedRealtime() - testStartedElapsedMs)
+        for ((k, v) in details) {
+            obj.put(k, v ?: JSONObject.NULL)
+        }
+        evidence[key] = obj
+        DiagnosticLogger.event(
+            "TEST",
+            "EVIDENCE_RECORDED",
+            mapOf(
+                "evidenceKey" to key,
+                "stepId" to currentStep()?.id,
+                "details" to details
+            )
+        )
+    }
+
+    fun missingEvidenceForCurrent(): List<String> {
+        val step = currentStep() ?: return emptyList()
+        return step.requiredEvidence.filterNot { evidence.containsKey(it) }
+    }
+
+    fun canPassCurrent(): Boolean = missingEvidenceForCurrent().isEmpty()
+
+    fun passCurrent(message: String = "Expected behavior confirmed."): Boolean {
+        val step = currentStep() ?: return false
+        val missing = missingEvidenceForCurrent()
+        if (missing.isNotEmpty()) {
+            DiagnosticLogger.warning(
+                "TEST_PASS_REJECTED_MISSING_EVIDENCE",
+                mapOf("stepId" to step.id, "missingEvidence" to missing)
+            )
+            return false
+        }
+
+        val duration = SystemClock.elapsedRealtime() - stepStartedElapsedMs
+        val measured = step.requiredEvidence.associateWith { key ->
+            evidence[key]?.toString() ?: ""
+        }
+        results += GuidedStepResult(
+            stepId = step.id,
+            status = GuidedStatus.PASS,
+            durationMs = duration,
+            message = message,
+            measuredValues = measured
+        )
+        DiagnosticLogger.event(
+            "TEST",
+            "STEP_PASS",
+            mapOf(
+                "stepId" to step.id,
+                "durationMs" to duration,
+                "message" to message,
+                "evidenceKeys" to step.requiredEvidence
+            )
+        )
+        advanceAfterPass()
+        return true
+    }
+
+    fun failCurrent(message: String): GuidedStatus {
+        val step = currentStep() ?: return overallStatus
+        val duration = SystemClock.elapsedRealtime() - stepStartedElapsedMs
+        results += GuidedStepResult(
+            stepId = step.id,
+            status = GuidedStatus.FAIL,
+            durationMs = duration,
+            message = message,
+            measuredValues = step.requiredEvidence.associateWith { key ->
+                evidence[key]?.toString() ?: "missing"
+            }
+        )
+        overallStatus = GuidedStatus.FAIL
+        testEndedUtc = Instant.now().toString()
+        DiagnosticLogger.event(
+            "TEST",
+            "STEP_FAIL",
+            mapOf(
+                "stepId" to step.id,
+                "durationMs" to duration,
+                "message" to message,
+                "missingEvidence" to missingEvidenceForCurrent()
+            )
+        )
+        DiagnosticLogger.event(
+            "TEST",
+            "GUIDED_TEST_FINISHED",
+            mapOf("overallStatus" to overallStatus.name, "firstFailedStep" to step.id)
+        )
+        DiagnosticLogger.clearTestContext()
+        activeDefinition = null
+        currentStepIndex = -1
+        return overallStatus
+    }
+
+    fun blockCurrent(message: String): GuidedStatus {
+        val step = currentStep() ?: return overallStatus
+        val duration = SystemClock.elapsedRealtime() - stepStartedElapsedMs
+        results += GuidedStepResult(
+            stepId = step.id,
+            status = GuidedStatus.BLOCKED,
+            durationMs = duration,
+            message = message
+        )
+        overallStatus = GuidedStatus.BLOCKED
+        testEndedUtc = Instant.now().toString()
+        DiagnosticLogger.event(
+            "TEST",
+            "STEP_BLOCKED",
+            mapOf("stepId" to step.id, "durationMs" to duration, "message" to message)
+        )
+        DiagnosticLogger.event(
+            "TEST",
+            "GUIDED_TEST_FINISHED",
+            mapOf("overallStatus" to overallStatus.name, "blockedStep" to step.id)
+        )
+        DiagnosticLogger.clearTestContext()
+        activeDefinition = null
+        currentStepIndex = -1
+        return overallStatus
+    }
+
+    fun cancel(message: String = "Test cancelled by user."): GuidedStatus {
+        val step = currentStep()
+        if (step != null) {
+            val duration = SystemClock.elapsedRealtime() - stepStartedElapsedMs
+            results += GuidedStepResult(
+                stepId = step.id,
+                status = GuidedStatus.PARTIAL,
+                durationMs = duration,
+                message = message
+            )
+        }
+        overallStatus = GuidedStatus.PARTIAL
+        testEndedUtc = Instant.now().toString()
+        DiagnosticLogger.event(
+            "TEST",
+            "GUIDED_TEST_CANCELLED",
+            mapOf("message" to message, "stepId" to step?.id)
+        )
+        DiagnosticLogger.clearTestContext()
+        activeDefinition = null
+        currentStepIndex = -1
+        return overallStatus
+    }
+
+    fun overallStatus(): GuidedStatus = overallStatus
+
+    fun resultsJson(): JSONObject {
+        val resultArray = JSONArray()
+        for (result in results) {
+            resultArray.put(
+                JSONObject()
+                    .put("stepId", result.stepId)
+                    .put("status", result.status.name)
+                    .put("durationMs", result.durationMs)
+                    .put("message", result.message)
+                    .put("measuredValues", JSONObject(result.measuredValues))
+            )
+        }
+
+        return JSONObject()
+            .put("testId", lastTestId ?: "")
+            .put("overallStatus", overallStatus.name)
+            .put(
+                "completed",
+                overallStatus == GuidedStatus.PASS ||
+                    overallStatus == GuidedStatus.FAIL ||
+                    overallStatus == GuidedStatus.BLOCKED
+            )
+            .put("currentStepId", currentStep()?.id ?: JSONObject.NULL)
+            .put("startedUtc", testStartedUtc ?: JSONObject.NULL)
+            .put("endedUtc", testEndedUtc ?: JSONObject.NULL)
+            .put("stepResults", resultArray)
+    }
+
+    fun summaryText(): String {
+        val firstFailure = results.firstOrNull { it.status == GuidedStatus.FAIL }
+        return buildString {
+            appendLine("Guided test results")
+            appendLine("Test ID: " + (lastTestId ?: ""))
+            appendLine("Overall status: " + overallStatus.name)
+            appendLine("Started UTC: " + (testStartedUtc ?: ""))
+            appendLine("Ended UTC: " + (testEndedUtc ?: ""))
+            if (firstFailure != null) {
+                appendLine("First failed step: " + firstFailure.stepId)
+                appendLine("Failure: " + firstFailure.message)
+            }
+            appendLine()
+            results.forEach { result ->
+                appendLine(
+                    result.stepId + ": " + result.status.name +
+                        " (" + result.durationMs + " ms) — " + result.message
+                )
+            }
+        }
+    }
+
+    private fun advanceAfterPass() {
+        val definition = activeDefinition ?: return
+        currentStepIndex += 1
+        if (currentStepIndex >= definition.steps.size) {
+            overallStatus = GuidedStatus.PASS
+            testEndedUtc = Instant.now().toString()
+            DiagnosticLogger.event(
+                "TEST",
+                "GUIDED_TEST_FINISHED",
+                mapOf(
+                    "overallStatus" to overallStatus.name,
+                    "durationMs" to (SystemClock.elapsedRealtime() - testStartedElapsedMs)
+                )
+            )
+            DiagnosticLogger.clearTestContext()
+            activeDefinition = null
+            currentStepIndex = -1
+            return
+        }
+
+        evidence.clear()
+        stepStartedElapsedMs = SystemClock.elapsedRealtime()
+        val step = definition.steps[currentStepIndex]
+        DiagnosticLogger.setTestContext(definition.id, step.id)
+        DiagnosticLogger.event(
+            "TEST",
+            "STEP_STARTED",
+            mapOf(
+                "stepId" to step.id,
+                "title" to step.title,
+                "expected" to step.expected
+            )
+        )
+    }
+}
