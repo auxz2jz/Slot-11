@@ -25,6 +25,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.filament.Camera
 import com.google.android.filament.EntityManager
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
@@ -60,6 +61,10 @@ class MainActivity : Activity() {
     private var autoRotateOffsetPx = 0f
     private var autoRotateOriginX = 0
     private var autoRotateOriginY = 0
+    private var orthographicProjection = false
+    private val projectionEye = DoubleArray(3)
+    private val projectionTarget = DoubleArray(3)
+    private val projectionUp = DoubleArray(3)
     private var currentName = "No model"
     private var currentStats = ModelStats("—", 0)
     private var quality = 1
@@ -70,6 +75,7 @@ class MainActivity : Activity() {
         override fun doFrame(frameTimeNanos: Long) {
             if (!loopActive) return
             updateAutoRotate(frameTimeNanos)
+            updateProjectionForFrame()
             viewer.render(frameTimeNanos)
             choreographer.postFrameCallback(this)
         }
@@ -416,7 +422,8 @@ class MainActivity : Activity() {
             "Sun: 50%", "Sun: 100%", "Sun: 150%",
             if (autoRotateEnabled) "Auto-rotate: Stop" else "Auto-rotate: Start",
             "Auto-rotate speed: ${autoRotateSpeedName()}",
-            "Auto-rotate direction: ${autoRotateDirectionName()}"
+            "Auto-rotate direction: ${autoRotateDirectionName()}",
+            "Projection: ${if (orthographicProjection) "Orthographic" else "Perspective"}"
         )
         AlertDialog.Builder(this).setTitle("Display").setItems(options) { _, which ->
             when (which) {
@@ -439,8 +446,58 @@ class MainActivity : Activity() {
                     restartAutoRotateGrab()
                     toast("Auto-rotate direction: ${autoRotateDirectionName()}")
                 }
+                12 -> setOrthographicProjection(!orthographicProjection)
             }
         }.show()
+    }
+
+    private fun setOrthographicProjection(enabled: Boolean) {
+        orthographicProjection = enabled
+        if (enabled) {
+            updateProjectionForFrame()
+            toast("Orthographic projection")
+        } else {
+            restorePerspectiveProjection()
+            toast("Perspective projection")
+        }
+    }
+
+    private fun restorePerspectiveProjection() {
+        // Reassigning the focal length intentionally asks ModelViewer to rebuild
+        // its normal lens projection for the current viewport.
+        viewer.cameraFocalLength = viewer.cameraFocalLength
+    }
+
+    private fun updateProjectionForFrame() {
+        if (!orthographicProjection) return
+
+        val viewport = viewer.view.viewport
+        val width = viewport.width
+        val height = viewport.height
+        if (width <= 0 || height <= 0) return
+
+        cameraManipulator.getLookAt(projectionEye, projectionTarget, projectionUp)
+        val dx = projectionEye[0] - projectionTarget[0]
+        val dy = projectionEye[1] - projectionTarget[1]
+        val dz = projectionEye[2] - projectionTarget[2]
+        val distance = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+            .coerceAtLeast(0.001)
+
+        // Filament's lens projection uses a 24 mm vertical sensor. Matching the
+        // perspective framing at the target plane gives half-height:
+        // distance * (sensorHeight / 2) / focalLength.
+        val focalLengthMm = viewer.cameraFocalLength.toDouble().coerceAtLeast(0.001)
+        val halfHeight = (distance * 12.0 / focalLengthMm).coerceAtLeast(0.001)
+        val aspect = width.toDouble() / height.toDouble()
+        val halfWidth = halfHeight * aspect
+
+        viewer.camera.setProjection(
+            Camera.Projection.ORTHO,
+            -halfWidth, halfWidth,
+            -halfHeight, halfHeight,
+            viewer.cameraNear.toDouble(),
+            viewer.cameraFar.toDouble()
+        )
     }
 
     private fun autoRotateSpeedName(): String = when (autoRotateSpeedIndex) {
@@ -691,15 +748,17 @@ class MainActivity : Activity() {
                 Shot: save the rendered view as PNG.
                 Anim / Next anim: glTF animation controls.
                 Quality: Performance / Balanced / High.
-                Display: background, studio lighting, sun brightness and Auto-rotate.
+                Display: background, studio lighting, sun brightness, Auto-rotate and Projection.
                 Auto-rotate: continuous turntable orbit with Slow/Normal/Fast speed
                 and Left/Right direction. Touching the model stops Auto-rotate so
                 normal orbit/pan/zoom immediately takes over.
+                Projection: switch between Perspective and true Orthographic viewing.
+                Orbit, pan and pinch zoom continue to work in both modes.
 
                 Supported now:
                 GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT, AMF, X3D, ASCII PLY and OFF geometry.
 
-                Planned: measurements, wireframe/edges, orthographic and named views,
+                Planned: measurements, wireframe/edges, named views,
                 section planes, exploded view, annotations, scene hierarchy, mesh
                 diagnostics, AR and additional CAD/model formats.
                 """.trimIndent()
