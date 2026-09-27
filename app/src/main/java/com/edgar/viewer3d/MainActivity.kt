@@ -351,6 +351,118 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(0, dp(38), 1f))
     }
 
+    private fun handleSurfaceTouch(event: MotionEvent) {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (autoRotateEnabled) {
+                    stopAutoRotate(showToast = true, reason = "manual_touch")
+                }
+                touchStartedElapsedMs = SystemClock.elapsedRealtime()
+                touchMaxPointers = event.pointerCount
+                touchMoveCount = 0
+                cameraManipulator.getLookAt(
+                    touchStartEye,
+                    touchStartTarget,
+                    projectionUp
+                )
+                DiagnosticLogger.event(
+                    "UI_ACTION",
+                    "TOUCH_GESTURE_STARTED",
+                    mapOf("pointerCount" to event.pointerCount)
+                )
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                touchMaxPointers = maxOf(touchMaxPointers, event.pointerCount)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                touchMaxPointers = maxOf(touchMaxPointers, event.pointerCount)
+                touchMoveCount += 1
+            }
+        }
+
+        viewer.onTouchEvent(event)
+
+        if (event.actionMasked == MotionEvent.ACTION_UP ||
+            event.actionMasked == MotionEvent.ACTION_CANCEL
+        ) {
+            cameraManipulator.getLookAt(
+                touchEndEye,
+                touchEndTarget,
+                projectionUp
+            )
+            val delta = cameraDelta(
+                touchStartEye,
+                touchStartTarget,
+                touchEndEye,
+                touchEndTarget
+            )
+            val duration = if (touchStartedElapsedMs > 0L) {
+                SystemClock.elapsedRealtime() - touchStartedElapsedMs
+            } else {
+                0L
+            }
+            val gestureType = if (touchMaxPointers <= 1) {
+                "single_touch_orbit"
+            } else {
+                "multi_touch_pan_or_zoom"
+            }
+
+            DiagnosticLogger.event(
+                "UI_ACTION",
+                "TOUCH_GESTURE_COMPLETED",
+                mapOf(
+                    "gestureType" to gestureType,
+                    "maxPointerCount" to touchMaxPointers,
+                    "moveEvents" to touchMoveCount,
+                    "durationMs" to duration,
+                    "cameraDelta" to delta,
+                    "cancelled" to (event.actionMasked == MotionEvent.ACTION_CANCEL)
+                )
+            )
+
+            if (delta > 0.0001 && touchMoveCount > 0) {
+                DiagnosticLogger.event(
+                    "STATE",
+                    "CAMERA_CHANGED_BY_TOUCH",
+                    mapOf(
+                        "gestureType" to gestureType,
+                        "cameraDelta" to delta
+                    )
+                )
+                if (touchMaxPointers <= 1) {
+                    GuidedTestController.recordEvidence(
+                        "TOUCH_CAMERA_CHANGED_SINGLE",
+                        mapOf("cameraDelta" to delta)
+                    )
+                } else {
+                    GuidedTestController.recordEvidence(
+                        "TOUCH_CAMERA_CHANGED_MULTI",
+                        mapOf("cameraDelta" to delta)
+                    )
+                }
+            }
+
+            touchStartedElapsedMs = 0L
+            touchMaxPointers = 0
+            touchMoveCount = 0
+        }
+    }
+
+    private fun cameraDelta(
+        startEye: DoubleArray,
+        startTarget: DoubleArray,
+        endEye: DoubleArray,
+        endTarget: DoubleArray
+    ): Double {
+        var sum = 0.0
+        for (i in 0..2) {
+            val eyeDelta = endEye[i] - startEye[i]
+            val targetDelta = endTarget[i] - startTarget[i]
+            sum += eyeDelta * eyeDelta + targetDelta * targetDelta
+        }
+        return kotlin.math.sqrt(sum)
+    }
+
     private fun openFile() {
         val requestId = DiagnosticLogger.newId("file_picker")
         pendingOpenRequestId = requestId
@@ -1236,48 +1348,139 @@ class MainActivity : Activity() {
     }
 
     private fun captureScreenshot() {
+        val operationId = DiagnosticLogger.newId("screenshot")
+        DiagnosticLogger.event(
+            "OUTPUT",
+            "SCREENSHOT_REQUESTED",
+            mapOf("model" to currentName),
+            operationId = operationId
+        )
+
         if (viewer.asset == null) {
+            DiagnosticLogger.warning(
+                "SCREENSHOT_IGNORED_NO_MODEL",
+                operationId = operationId
+            )
             toast("Open a model first.")
             return
         }
+
+        val started = SystemClock.elapsedRealtime()
         toast("Capturing…")
         viewer.debugGetNextFrameCallback { source ->
+            DiagnosticLogger.event(
+                "OUTPUT",
+                "SCREENSHOT_FRAME_CAPTURED",
+                mapOf(
+                    "width" to source.width,
+                    "height" to source.height
+                ),
+                operationId = operationId
+            )
             Thread {
                 try {
                     val matrix = Matrix().apply { preScale(1f, -1f) }
-                    val bitmap = Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
-                    val location = saveBitmap(bitmap)
-                    runOnUiThread { toast("Screenshot saved: $location") }
+                    val bitmap = Bitmap.createBitmap(
+                        source,
+                        0,
+                        0,
+                        source.width,
+                        source.height,
+                        matrix,
+                        true
+                    )
+                    val saved = saveBitmap(bitmap)
+                    val duration = SystemClock.elapsedRealtime() - started
+                    DiagnosticLogger.event(
+                        "OUTPUT",
+                        "SCREENSHOT_SAVED",
+                        mapOf(
+                            "location" to saved.first,
+                            "byteSize" to saved.second,
+                            "durationMs" to duration,
+                            "width" to bitmap.width,
+                            "height" to bitmap.height
+                        ),
+                        operationId = operationId
+                    )
+                    GuidedTestController.recordEvidence(
+                        "SCREENSHOT_SAVED",
+                        mapOf(
+                            "location" to saved.first,
+                            "byteSize" to saved.second
+                        )
+                    )
+                    runOnUiThread {
+                        toast("Screenshot saved: " + saved.first)
+                    }
                 } catch (t: Throwable) {
-                    runOnUiThread { toast("Screenshot failed: ${t.message}") }
+                    DiagnosticLogger.error(
+                        module = "MainActivity",
+                        operation = "SCREENSHOT_SAVE",
+                        throwable = t,
+                        details = mapOf("model" to currentName),
+                        operationId = operationId
+                    )
+                    runOnUiThread {
+                        toast("Screenshot failed: " + (t.message ?: t.javaClass.simpleName))
+                    }
                 }
             }.start()
         }
     }
 
-    private fun saveBitmap(bitmap: Bitmap): String {
-        val fileName = "3DViewer_${System.currentTimeMillis()}.png"
+    private fun saveBitmap(bitmap: Bitmap): Pair<String, Long> {
+        val fileName = "3DViewer_" + System.currentTimeMillis() + ".png"
         if (Build.VERSION.SDK_INT >= 29) {
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/3DViewer")
+                put(
+                    MediaStore.Images.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES + "/3DViewer"
+                )
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
-            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                ?: error("MediaStore insert failed.")
-            contentResolver.openOutputStream(uri)?.use {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-            } ?: error("Could not write screenshot.")
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(uri, values, null, null)
-            return "Pictures/3DViewer/$fileName"
+            val uri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                values
+            ) ?: error("MediaStore insert failed.")
+
+            try {
+                val compressed = contentResolver.openOutputStream(uri)?.use {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                } ?: error("Could not write screenshot.")
+                require(compressed) { "Bitmap compression failed." }
+
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                contentResolver.update(uri, values, null, null)
+
+                val size = contentResolver.openFileDescriptor(uri, "r")?.use {
+                    it.statSize
+                } ?: -1L
+                require(size > 0L) {
+                    "Screenshot output exists but its size could not be verified."
+                }
+                return "Pictures/3DViewer/" + fileName to size
+            } catch (t: Throwable) {
+                runCatching { contentResolver.delete(uri, null, null) }
+                throw t
+            }
         }
-        val dir = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "3DViewer").apply { mkdirs() }
+
+        val dir = File(
+            getExternalFilesDir(Environment.DIRECTORY_PICTURES),
+            "3DViewer"
+        ).apply { mkdirs() }
         val file = File(dir, fileName)
-        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        return file.absolutePath
+        val compressed = FileOutputStream(file).use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        require(compressed && file.exists() && file.length() > 0L) {
+            "Screenshot output verification failed."
+        }
+        return file.absolutePath to file.length()
     }
 
     private fun addRecent(uri: Uri, name: String) {
