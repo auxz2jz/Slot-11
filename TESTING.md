@@ -196,3 +196,24 @@ A feature is:
 - VERIFIED only after required testing succeeds, including user visual confirmation where needed.
 
 Raw chronological diagnostics override a false-positive summary.
+
+## Supported-format corpus test
+Use the generated `Android3DViewer_Supported_Format_Test_Pack.zip` and `FORMAT_TEST_CORPUS.md`.
+
+Recommended order:
+1. binary STL
+2. ASCII STL
+3. GLB
+4. embedded glTF
+5. OBJ
+6. 3MF
+7. AMF
+8. X3D
+9. ASCII PLY
+10. OFF
+11. STEP
+12. STP
+
+For every failure, record the exact filename, whether the file appeared in Android Files, whether selection returned to the app, and the exact error dialog/status text.
+
+STEP gray rendering is not itself a geometry-test failure in v0.5.x; color metadata preservation is currently a separate TODO.
