@@ -690,6 +690,22 @@ class MainActivity : Activity() {
                 appendLine("max (${fmt(b.maxX)}, ${fmt(b.maxY)}, ${fmt(b.maxZ)})")
             }
         }
+        DiagnosticLogger.event(
+            "OUTPUT",
+            "INFO_PRESENTED",
+            mapOf(
+                "displayName" to currentName,
+                "format" to s.format,
+                "byteSize" to s.byteSize,
+                "vertices" to s.vertices,
+                "triangles" to s.triangles,
+                "animations" to s.animations
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "INFO_PRESENTED",
+            mapOf("displayName" to currentName, "format" to s.format)
+        )
         AlertDialog.Builder(this).setTitle("Model information").setMessage(text)
             .setPositiveButton("OK", null).show()
     }
@@ -697,25 +713,70 @@ class MainActivity : Activity() {
     private fun toggleAnimation() {
         val animator = viewer.animator
         if (animator == null || animator.animationCount == 0) {
+            DiagnosticLogger.warning(
+                "ANIMATION_TOGGLE_IGNORED",
+                mapOf("reason" to "no_animation", "model" to currentName)
+            )
             toast("This model has no animation.")
             return
         }
-        viewer.autoPlayAnimations = !viewer.autoPlayAnimations
+
+        val oldValue = viewer.autoPlayAnimations
+        viewer.autoPlayAnimations = !oldValue
+        DiagnosticLogger.event(
+            "STATE",
+            "ANIMATION_TOGGLED",
+            mapOf(
+                "oldValue" to oldValue,
+                "newValue" to viewer.autoPlayAnimations,
+                "activeAnimationIndex" to viewer.activeAnimationIndex,
+                "animationCount" to animator.animationCount
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "ANIMATION_TOGGLED",
+            mapOf(
+                "oldValue" to oldValue,
+                "newValue" to viewer.autoPlayAnimations
+            )
+        )
         toast(if (viewer.autoPlayAnimations) "Animation playing" else "Animation paused")
     }
 
     private fun nextAnimation() {
         val animator = viewer.animator
         if (animator == null || animator.animationCount == 0) {
+            DiagnosticLogger.warning(
+                "ANIMATION_NEXT_IGNORED",
+                mapOf("reason" to "no_animation", "model" to currentName)
+            )
             toast("This model has no animation.")
             return
         }
-        viewer.activeAnimationIndex = (viewer.activeAnimationIndex + 1) % animator.animationCount
+
+        val oldIndex = viewer.activeAnimationIndex
+        val newIndex = (oldIndex + 1) % animator.animationCount
+        viewer.activeAnimationIndex = newIndex
         viewer.autoPlayAnimations = true
-        toast("Animation ${viewer.activeAnimationIndex + 1} of ${animator.animationCount}")
+        DiagnosticLogger.event(
+            "STATE",
+            "ANIMATION_INDEX_CHANGED",
+            mapOf(
+                "oldIndex" to oldIndex,
+                "newIndex" to newIndex,
+                "animationCount" to animator.animationCount,
+                "autoPlay" to viewer.autoPlayAnimations
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "ANIMATION_INDEX_CHANGED",
+            mapOf("oldIndex" to oldIndex, "newIndex" to newIndex)
+        )
+        toast("Animation " + (newIndex + 1) + " of " + animator.animationCount)
     }
 
     private fun cycleQuality() {
+        val oldQuality = quality
         quality = (quality + 1) % 3
         when (quality) {
             0 -> {
@@ -739,10 +800,31 @@ class MainActivity : Activity() {
                     viewer.view.multiSampleAntiAliasingOptions.apply { enabled = true }
                 viewer.view.antiAliasing = FilamentView.AntiAliasing.FXAA
                 viewer.view.renderQuality =
-                    viewer.view.renderQuality.apply { hdrColorBuffer = FilamentView.QualityLevel.HIGH }
+                    viewer.view.renderQuality.apply {
+                        hdrColorBuffer = FilamentView.QualityLevel.HIGH
+                    }
                 toast("High quality")
             }
         }
+
+        val modeName = when (quality) {
+            0 -> "Performance"
+            1 -> "Balanced"
+            else -> "High"
+        }
+        DiagnosticLogger.event(
+            "STATE",
+            "QUALITY_CHANGED",
+            mapOf(
+                "oldModeIndex" to oldQuality,
+                "newModeIndex" to quality,
+                "newMode" to modeName
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "QUALITY_CHANGED",
+            mapOf("oldModeIndex" to oldQuality, "newMode" to modeName)
+        )
     }
 
     private fun configureBalancedQuality() {
@@ -768,6 +850,12 @@ class MainActivity : Activity() {
             "Projection: ${if (orthographicProjection) "Orthographic" else "Perspective"}"
         )
         AlertDialog.Builder(this).setTitle("Display").setItems(options) { _, which ->
+            val selectedLabel = options.getOrNull(which) ?: "unknown"
+            DiagnosticLogger.event(
+                "UI_ACTION",
+                "DISPLAY_OPTION_SELECTED",
+                mapOf("index" to which, "label" to selectedLabel)
+            )
             when (which) {
                 0 -> setBackground(0.0, 0.0, 0.0)
                 1 -> setBackground(0.07, 0.075, 0.085)
@@ -780,13 +868,27 @@ class MainActivity : Activity() {
                 8 -> setSunIntensity(150_000f)
                 9 -> setAutoRotateEnabled(!autoRotateEnabled)
                 10 -> {
+                    val oldSpeed = autoRotateSpeedName()
                     autoRotateSpeedIndex = (autoRotateSpeedIndex + 1) % 3
-                    toast("Auto-rotate speed: ${autoRotateSpeedName()}")
+                    val newSpeed = autoRotateSpeedName()
+                    DiagnosticLogger.event(
+                        "STATE",
+                        "AUTO_ROTATE_SPEED_CHANGED",
+                        mapOf("oldValue" to oldSpeed, "newValue" to newSpeed)
+                    )
+                    toast("Auto-rotate speed: " + newSpeed)
                 }
                 11 -> {
+                    val oldDirection = autoRotateDirectionName()
                     autoRotateDirection *= -1f
                     restartAutoRotateGrab()
-                    toast("Auto-rotate direction: ${autoRotateDirectionName()}")
+                    val newDirection = autoRotateDirectionName()
+                    DiagnosticLogger.event(
+                        "STATE",
+                        "AUTO_ROTATE_DIRECTION_CHANGED",
+                        mapOf("oldValue" to oldDirection, "newValue" to newDirection)
+                    )
+                    toast("Auto-rotate direction: " + newDirection)
                 }
                 12 -> setOrthographicProjection(!orthographicProjection)
             }
