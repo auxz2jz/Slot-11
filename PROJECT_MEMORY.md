@@ -6,7 +6,7 @@
 - Package: `com.edgar.viewer3d`
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
-- Current feature branch under development: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
+- Current feature branch checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -130,7 +130,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** install and device-test v0.5.1. First verify that `test_object_binary.stl` and `test_object_ascii.stl` are no longer greyed out in Android Files when opened from the app. Then test the two STL parser paths. Keep v0.4.0 as VERIFIED until a newer candidate passes user testing.
+**Exact next development/test action:** preserve the v0.5.1 checkpoint, then implement auto-rotate / turntable viewing as v0.6.0 with adjustable speed and direction. Do not alter the verified STL or animation paths unnecessarily.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -160,6 +160,23 @@ Format regression pack:
 User verification on 2026-09-26: both generated STL files became selectable and STL loading now works in v0.5.1. The STL picker compatibility defect is CLOSED. Full v0.5.1 release regression is still pending, so v0.4.0 remains the overall VERIFIED baseline.
 
 **Exact next action:** test the existing glTF/GLB animation controls with a dedicated three-clip animation fixture (whole-model spin, arm swing, top-block bounce). Verify `Info` reports 3 animations, `Anim` pauses/resumes, and `Next` cycles 1→2→3→1.
+
+## Animation controls user verification — 2026-09-26
+User tested the generated three-clip GLB fixture and confirmed the animation controls work.
+
+Verified behavior:
+- animated GLB loads;
+- `Anim` play/pause works;
+- `Next` cycles embedded animation clips;
+- multi-animation playback is visibly functional.
+
+Feature status:
+- glTF/GLB animation play/pause: **USER-VERIFIED**
+- next-animation cycling: **USER-VERIFIED**
+
+This verification is feature-specific. The overall last fully regression-verified release remains v0.4.0 until the complete v0.5.1 regression checklist is run.
+
+**Next feature:** auto-rotate / turntable viewing with adjustable speed and direction. Implement on a separate v0.6.0 feature branch, preserving the v0.5.1 checkpoint.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
