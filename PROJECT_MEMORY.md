@@ -150,14 +150,16 @@ v0.5.1 build:
 - artifact ID: `10922617848`
 - artifact ZIP SHA-256: `c9f5c11efadb6b5ededbe5cb27b11bcc7dc99565b53616446f6c3cdecc3f5d29`
 - extracted APK SHA-256: `489cf4072ca8ff8a45646b912fe2a898fc7bbf03386769252abf2f04680386ba`
-- status: **CANDIDATE — CI BUILT, DEVICE TEST REQUIRED**
+- status: **CANDIDATE — STL PICKER FIX USER-VERIFIED; FULL RELEASE REGRESSION STILL PENDING**
 
 Format regression pack:
 - one asymmetric 40 x 30 x 20 mm L-shaped object generated in GLB, embedded glTF, binary STL, ASCII STL, OBJ, 3MF, AMF, X3D, ASCII PLY, OFF, STEP and STP;
 - both STL variants validated independently before device testing;
 - STEP/STP round-tripped through CadQuery/Open CASCADE at the expected dimensions.
 
-**Exact next action:** install v0.5.1, open the generated format pack through the app's **Open** button, confirm both STL entries are selectable, then test binary STL first and ASCII STL second. If a selectable STL then fails, capture the exact error dialog; that would be new parser-level evidence.
+User verification on 2026-09-26: both generated STL files became selectable and STL loading now works in v0.5.1. The STL picker compatibility defect is CLOSED. Full v0.5.1 release regression is still pending, so v0.4.0 remains the overall VERIFIED baseline.
+
+**Exact next action:** test the existing glTF/GLB animation controls with a dedicated three-clip animation fixture (whole-model spin, arm swing, top-block bounce). Verify `Info` reports 3 animations, `Anim` pauses/resumes, and `Next` cycles 1→2→3→1.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
