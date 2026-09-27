@@ -1487,38 +1487,86 @@ class MainActivity : Activity() {
         if (uri == Uri.EMPTY) return
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val existing = (0 until 8).mapNotNull { i ->
-            val u = prefs.getString("recent_uri_$i", null)
-            val n = prefs.getString("recent_name_$i", null)
+            val u = prefs.getString("recent_uri_" + i, null)
+            val n = prefs.getString("recent_name_" + i, null)
             if (u != null && n != null) u to n else null
         }.filterNot { it.first == uri.toString() }.toMutableList()
+
         existing.add(0, uri.toString() to name)
         val edit = prefs.edit().clear()
         existing.take(8).forEachIndexed { i, pair ->
-            edit.putString("recent_uri_$i", pair.first)
-            edit.putString("recent_name_$i", pair.second)
+            edit.putString("recent_uri_" + i, pair.first)
+            edit.putString("recent_name_" + i, pair.second)
         }
         edit.apply()
+
+        DiagnosticLogger.event(
+            "STATE",
+            "RECENT_LIST_UPDATED",
+            mapOf(
+                "displayName" to name,
+                "storedCount" to minOf(existing.size, 8)
+            )
+        )
     }
 
     private fun showRecent() {
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val items = (0 until 8).mapNotNull { i ->
-            val u = prefs.getString("recent_uri_$i", null)
-            val n = prefs.getString("recent_name_$i", null)
+            val u = prefs.getString("recent_uri_" + i, null)
+            val n = prefs.getString("recent_name_" + i, null)
             if (u != null && n != null) u to n else null
         }
+
+        DiagnosticLogger.event(
+            "NAVIGATION",
+            "RECENT_LIST_PRESENTED",
+            mapOf("itemCount" to items.size)
+        )
+
         if (items.isEmpty()) {
+            DiagnosticLogger.warning("RECENT_LIST_EMPTY")
             toast("No recent models yet.")
             return
         }
-        AlertDialog.Builder(this).setTitle("Recent models")
+
+        AlertDialog.Builder(this)
+            .setTitle("Recent models")
             .setItems(items.map { it.second }.toTypedArray()) { _, which ->
-                loadUri(Uri.parse(items[which].first))
+                val selected = items[which]
+                DiagnosticLogger.event(
+                    "UI_ACTION",
+                    "RECENT_SELECTED",
+                    mapOf(
+                        "index" to which,
+                        "displayName" to selected.second
+                    )
+                )
+                GuidedTestController.recordEvidence(
+                    "RECENT_SELECTED",
+                    mapOf("displayName" to selected.second)
+                )
+                loadUri(
+                    Uri.parse(selected.first),
+                    source = "recent"
+                )
             }
-            .setNegativeButton("Cancel", null).show()
+            .setNegativeButton("Cancel") { _, _ ->
+                DiagnosticLogger.event(
+                    "NAVIGATION",
+                    "RECENT_LIST_CANCELLED"
+                )
+            }
+            .show()
     }
 
     private fun showHelp() {
+        if (GuidedTestController.isActive()) {
+            showGuidedStepReview()
+            return
+        }
+
+        DiagnosticLogger.event("NAVIGATION", "HELP_PRESENTED")
         AlertDialog.Builder(this)
             .setTitle("3D Viewer controls")
             .setMessage(
@@ -1531,23 +1579,249 @@ class MainActivity : Activity() {
                 Fit: reset framing.
                 Info: file, mesh, bounds and animation information.
                 Shot: save the rendered view as PNG.
-                Anim / Next anim: glTF animation controls.
+                Anim / Next: glTF animation controls.
                 Quality: Performance / Balanced / High.
                 Display: background, studio lighting, sun brightness, Auto-rotate and Projection.
                 Auto-rotate: continuous turntable orbit with Slow/Normal/Fast speed
                 and Left/Right direction. Touching the model stops Auto-rotate so
                 normal orbit/pan/zoom immediately takes over.
                 Projection: switch between Perspective and true Orthographic viewing.
-                Orbit, pan and pinch zoom continue to work in both modes.
+
+                Test This Version: built-in guided tests with objective evidence plus
+                visual confirmation when needed.
+                Export Diagnostics: creates a local ZIP in Downloads/3DViewerDiagnostics.
+                Diagnostics do not upload automatically.
 
                 Supported now:
-                GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT, AMF, X3D, ASCII PLY and OFF geometry.
+                GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT, AMF, X3D,
+                ASCII PLY and OFF geometry.
 
-                Planned: measurements, wireframe/edges, named views,
-                section planes, exploded view, annotations, scene hierarchy, mesh
-                diagnostics, AR and additional CAD/model formats.
+                Planned: measurements, wireframe/edges, named views, section planes,
+                exploded view, annotations, scene hierarchy, mesh diagnostics, AR
+                and additional CAD/model formats.
                 """.trimIndent()
-            ).setPositiveButton("OK", null).show()
+            )
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Test This Version") { _, _ ->
+                DiagnosticLogger.event(
+                    "UI_ACTION",
+                    "GUIDED_TEST_MENU_REQUESTED"
+                )
+                showGuidedTestMenu()
+            }
+            .setNegativeButton("Export Diagnostics") { _, _ ->
+                exportDiagnostics()
+            }
+            .show()
+    }
+
+    private fun showGuidedTestMenu() {
+        val definitions = GuidedTestController.definitions()
+        val labels = definitions.map {
+            it.title + " — " + it.description
+        }.toTypedArray()
+
+        DiagnosticLogger.event(
+            "NAVIGATION",
+            "GUIDED_TEST_MENU_PRESENTED",
+            mapOf("testCount" to definitions.size)
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Test This Version")
+            .setItems(labels) { _, which ->
+                val definition = definitions[which]
+                DiagnosticLogger.event(
+                    "UI_ACTION",
+                    "GUIDED_TEST_SELECTED",
+                    mapOf("testId" to definition.id, "title" to definition.title)
+                )
+                GuidedTestController.start(definition.id)
+                showGuidedStepInstruction()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                DiagnosticLogger.event(
+                    "NAVIGATION",
+                    "GUIDED_TEST_MENU_CANCELLED"
+                )
+            }
+            .show()
+    }
+
+    private fun showGuidedStepInstruction() {
+        val test = GuidedTestController.activeTest()
+        val step = GuidedTestController.currentStep()
+        if (test == null || step == null) {
+            showGuidedTestFinished()
+            return
+        }
+
+        val stepNumber = GuidedTestController.currentStepNumber()
+        val message = buildString {
+            appendLine("Step " + stepNumber + " of " + test.steps.size)
+            appendLine()
+            appendLine("WHAT TO DO")
+            appendLine(step.instruction)
+            appendLine()
+            appendLine("EXPECTED")
+            appendLine(step.expected)
+            appendLine()
+            appendLine("Perform the step, then tap Help to check the result.")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(step.title)
+            .setMessage(message)
+            .setPositiveButton("Do Step") { _, _ ->
+                DiagnosticLogger.event(
+                    "TEST",
+                    "STEP_INSTRUCTION_DISMISSED_FOR_ACTION",
+                    mapOf("stepId" to step.id)
+                )
+                toast("Perform the step, then tap Help.")
+            }
+            .setNegativeButton("Cancel Test") { _, _ ->
+                GuidedTestController.cancel()
+                showGuidedTestFinished()
+            }
+            .setNeutralButton("Blocked") { _, _ ->
+                GuidedTestController.blockCurrent(
+                    "Tester reported that this step could not be performed."
+                )
+                showGuidedTestFinished()
+            }
+            .show()
+    }
+
+    private fun showGuidedStepReview() {
+        val test = GuidedTestController.activeTest()
+        val step = GuidedTestController.currentStep()
+        if (test == null || step == null) {
+            showGuidedTestFinished()
+            return
+        }
+
+        val missing = GuidedTestController.missingEvidenceForCurrent()
+        val evidenceText = if (missing.isEmpty()) {
+            "Required software evidence: observed."
+        } else {
+            "Required software evidence still missing: " + missing.joinToString(", ")
+        }
+
+        val message = buildString {
+            appendLine("Step " + GuidedTestController.currentStepNumber() + " of " + test.steps.size)
+            appendLine()
+            appendLine("EXPECTED")
+            appendLine(step.expected)
+            appendLine()
+            appendLine(evidenceText)
+            if (step.visualConfirmationRequired) {
+                appendLine()
+                appendLine("Confirm the visible behavior as well as the software evidence.")
+            }
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Check: " + step.title)
+            .setMessage(message)
+            .setPositiveButton(
+                if (step.visualConfirmationRequired) "Looks Correct" else "Verify Result"
+            ) { _, _ ->
+                if (!GuidedTestController.canPassCurrent()) {
+                    val stillMissing = GuidedTestController.missingEvidenceForCurrent()
+                    DiagnosticLogger.warning(
+                        "GUIDED_TEST_PASS_BLOCKED",
+                        mapOf(
+                            "stepId" to step.id,
+                            "missingEvidence" to stillMissing
+                        )
+                    )
+                    AlertDialog.Builder(this)
+                        .setTitle("Cannot pass this step yet")
+                        .setMessage(
+                            "The intended software result has not been observed yet. " +
+                                "Missing evidence: " + stillMissing.joinToString(", ")
+                        )
+                        .setPositiveButton("Continue Step") { _, _ ->
+                            showGuidedStepInstruction()
+                        }
+                        .show()
+                } else {
+                    val passed = GuidedTestController.passCurrent(
+                        if (step.visualConfirmationRequired) {
+                            "Objective evidence observed and tester confirmed the visible result."
+                        } else {
+                            "Objective software result verified."
+                        }
+                    )
+                    if (passed) {
+                        if (GuidedTestController.isActive()) {
+                            showGuidedStepInstruction()
+                        } else {
+                            showGuidedTestFinished()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Expected Behavior Failed") { _, _ ->
+                GuidedTestController.failCurrent(
+                    "Tester reported that the expected behavior failed."
+                )
+                showGuidedTestFinished()
+            }
+            .setNeutralButton("Cancel Test") { _, _ ->
+                GuidedTestController.cancel()
+                showGuidedTestFinished()
+            }
+            .show()
+    }
+
+    private fun showGuidedTestFinished() {
+        val statusValue = GuidedTestController.overallStatus()
+        val message = GuidedTestController.summaryText().ifBlank {
+            "Guided test status: " + statusValue.name
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Test Result: " + statusValue.name)
+            .setMessage(message)
+            .setPositiveButton("Export Test + Diagnostics") { _, _ ->
+                exportDiagnostics()
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun exportDiagnostics() {
+        DiagnosticLogger.event(
+            "UI_ACTION",
+            "EXPORT_DIAGNOSTICS_SELECTED"
+        )
+        toast("Exporting diagnostics…")
+        Thread {
+            try {
+                val result = DiagnosticExporter.export(this)
+                runOnUiThread {
+                    toast(
+                        "Diagnostics saved: " +
+                            result.location +
+                            " (" + formatBytes(result.byteSize) + ")"
+                    )
+                }
+            } catch (t: Throwable) {
+                DiagnosticLogger.error(
+                    module = "MainActivity",
+                    operation = "EXPORT_DIAGNOSTICS_UI",
+                    throwable = t
+                )
+                runOnUiThread {
+                    toast(
+                        "Diagnostics export failed: " +
+                            (t.message ?: t.javaClass.simpleName)
+                    )
+                }
+            }
+        }.start()
     }
 
     private fun displayName(uri: Uri): String? {
