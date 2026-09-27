@@ -370,23 +370,146 @@ class MainActivity : Activity() {
         startActivityForResult(i, OPEN_REQUEST)
     }
 
-    private fun loadUri(uri: Uri) {
+    private fun loadUri(
+        uri: Uri,
+        source: String = "unknown",
+        parentRequestId: String? = null
+    ) {
         stopAutoRotate(showToast = false)
+        val operationId = DiagnosticLogger.newId("model_load")
+        val loadStartedElapsedMs = SystemClock.elapsedRealtime()
         val name = displayName(uri) ?: uri.lastPathSegment ?: "model"
+        val extension = ModelImporter.extension(name)
+
+        DiagnosticLogger.event(
+            "FILE",
+            "MODEL_LOAD_REQUESTED",
+            mapOf(
+                "source" to source,
+                "displayName" to name,
+                "extension" to extension,
+                "previousModel" to currentName
+            ),
+            requestId = parentRequestId,
+            operationId = operationId
+        )
+
         if (!ModelImporter.isSupported(name)) {
+            DiagnosticLogger.event(
+                "FILE",
+                "MODEL_LOAD_REJECTED",
+                mapOf(
+                    "reason" to "unsupported_extension",
+                    "displayName" to name,
+                    "extension" to extension
+                ),
+                requestId = parentRequestId,
+                operationId = operationId
+            )
             toast("Unsupported extension. Use GLB, glTF, STL, OBJ, 3MF, STEP/STP, AMF, X3D, PLY, or OFF.")
             return
         }
+
         status.text = "Loading $name…"
+        DiagnosticLogger.event(
+            "STATE",
+            "MODEL_LOAD_STATE_CHANGED",
+            mapOf("stateBefore" to "idle", "stateAfter" to "loading"),
+            operationId = operationId
+        )
+
         Thread {
+            val workerStarted = SystemClock.elapsedRealtime()
+            DiagnosticLogger.event(
+                "PROCESSING",
+                "MODEL_LOAD_WORKER_STARTED",
+                mapOf("threadName" to Thread.currentThread().name),
+                operationId = operationId
+            )
             try {
+                val readStarted = SystemClock.elapsedRealtime()
                 val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: error("Android could not open the selected file.")
+                val readDuration = SystemClock.elapsedRealtime() - readStarted
+
+                DiagnosticLogger.event(
+                    "FILE",
+                    "INPUT_READ_COMPLETED",
+                    mapOf(
+                        "displayName" to name,
+                        "extension" to extension,
+                        "byteSize" to bytes.size,
+                        "durationMs" to readDuration
+                    ),
+                    operationId = operationId
+                )
+                DiagnosticLogger.setInputInfo(
+                    mapOf(
+                        "displayName" to name,
+                        "extension" to extension,
+                        "byteSize" to bytes.size,
+                        "source" to source
+                    )
+                )
+
+                val importStarted = SystemClock.elapsedRealtime()
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "IMPORT_REQUESTED",
+                    mapOf("displayName" to name, "extension" to extension),
+                    operationId = operationId
+                )
+
                 val prepared = ModelImporter.prepare(name, bytes, cacheDir)
-                runOnUiThread { loadPrepared(uri, name, prepared) }
+                val importDuration = SystemClock.elapsedRealtime() - importStarted
+
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "IMPORT_COMPLETED",
+                    mapOf(
+                        "format" to prepared.stats.format,
+                        "sourceBytes" to prepared.stats.byteSize,
+                        "vertices" to prepared.stats.vertices,
+                        "triangles" to prepared.stats.triangles,
+                        "unit" to prepared.stats.unit,
+                        "preparedBytes" to prepared.bytes.size,
+                        "isGltfJson" to prepared.isGltfJson,
+                        "durationMs" to importDuration
+                    ),
+                    operationId = operationId
+                )
+
+                runOnUiThread {
+                    loadPrepared(
+                        uri = uri,
+                        name = name,
+                        prepared = prepared,
+                        operationId = operationId,
+                        source = source,
+                        loadStartedElapsedMs = loadStartedElapsedMs
+                    )
+                }
             } catch (t: Throwable) {
+                DiagnosticLogger.error(
+                    module = "MainActivity",
+                    operation = "MODEL_IMPORT",
+                    throwable = t,
+                    details = mapOf(
+                        "displayName" to name,
+                        "extension" to extension,
+                        "source" to source,
+                        "workerDurationMs" to (SystemClock.elapsedRealtime() - workerStarted)
+                    ),
+                    operationId = operationId
+                )
                 runOnUiThread {
                     status.text = "Load failed"
+                    DiagnosticLogger.event(
+                        "STATE",
+                        "MODEL_LOAD_STATE_CHANGED",
+                        mapOf("stateBefore" to "loading", "stateAfter" to "failed"),
+                        operationId = operationId
+                    )
                     AlertDialog.Builder(this)
                         .setTitle("Could not open model")
                         .setMessage(t.message ?: t.javaClass.simpleName)
@@ -397,26 +520,134 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun loadPrepared(uri: Uri, name: String, prepared: PreparedModel) {
+    private fun loadPrepared(
+        uri: Uri,
+        name: String,
+        prepared: PreparedModel,
+        operationId: String,
+        source: String,
+        loadStartedElapsedMs: Long
+    ) {
+        val previousName = currentName
+        DiagnosticLogger.event(
+            "STATE",
+            "MODEL_DISPLAY_REQUESTED",
+            mapOf(
+                "displayName" to name,
+                "format" to prepared.stats.format,
+                "previousModel" to previousName
+            ),
+            operationId = operationId
+        )
+
         try {
             if (prepared.isGltfJson) {
-                viewer.loadModelGltf(ByteBuffer.wrap(prepared.bytes)) { ref -> decodeEmbeddedResource(ref) }
+                viewer.loadModelGltf(ByteBuffer.wrap(prepared.bytes)) { ref ->
+                    decodeEmbeddedResource(ref)
+                }
                 if (viewer.asset == null) {
-                    error("This .gltf references external files. Embedded glTF works now; sidecar-folder loading is on the importer roadmap.")
+                    error(
+                        "This .gltf references external files. Embedded glTF works now; " +
+                            "sidecar-folder loading is on the importer roadmap."
+                    )
                 }
             } else {
                 viewer.loadModelGlb(ByteBuffer.wrap(prepared.bytes))
             }
+
+            require(viewer.asset != null) {
+                "Filament did not create a displayable model asset."
+            }
+
             viewer.transformToUnitCube()
             currentName = name
             val animationCount = viewer.animator?.animationCount ?: 0
             currentStats = prepared.stats.copy(animations = animationCount)
             addRecent(uri, name)
-            status.text = "$name • ${prepared.stats.format}" +
-                (prepared.stats.triangles?.let { " • ${formatInt(it)} triangles" } ?: "") +
-                if (animationCount > 0) " • $animationCount anim" else ""
+
+            status.text = name + " • " + prepared.stats.format +
+                (prepared.stats.triangles?.let { " • " + formatInt(it) + " triangles" } ?: "") +
+                if (animationCount > 0) " • " + animationCount + " anim" else ""
+
+            val totalDuration = SystemClock.elapsedRealtime() - loadStartedElapsedMs
+            DiagnosticLogger.setInputInfo(
+                mapOf(
+                    "displayName" to name,
+                    "extension" to ModelImporter.extension(name),
+                    "byteSize" to prepared.stats.byteSize,
+                    "source" to source,
+                    "format" to prepared.stats.format,
+                    "vertices" to prepared.stats.vertices,
+                    "triangles" to prepared.stats.triangles,
+                    "animations" to animationCount,
+                    "unit" to prepared.stats.unit,
+                    "bounds" to prepared.stats.bounds?.let {
+                        mapOf(
+                            "minX" to it.minX,
+                            "minY" to it.minY,
+                            "minZ" to it.minZ,
+                            "maxX" to it.maxX,
+                            "maxY" to it.maxY,
+                            "maxZ" to it.maxZ
+                        )
+                    }
+                )
+            )
+            DiagnosticLogger.event(
+                "OUTPUT",
+                "MODEL_DISPLAYED",
+                mapOf(
+                    "previousModel" to previousName,
+                    "displayName" to name,
+                    "format" to prepared.stats.format,
+                    "vertices" to prepared.stats.vertices,
+                    "triangles" to prepared.stats.triangles,
+                    "animations" to animationCount,
+                    "assetPresent" to (viewer.asset != null),
+                    "durationMs" to totalDuration
+                ),
+                operationId = operationId
+            )
+            DiagnosticLogger.event(
+                "STATE",
+                "MODEL_LOAD_STATE_CHANGED",
+                mapOf("stateBefore" to "loading", "stateAfter" to "displayed"),
+                operationId = operationId
+            )
+            GuidedTestController.recordEvidence(
+                "MODEL_DISPLAYED",
+                mapOf(
+                    "displayName" to name,
+                    "format" to prepared.stats.format,
+                    "triangles" to prepared.stats.triangles,
+                    "animations" to animationCount
+                )
+            )
+            if (animationCount >= 2) {
+                GuidedTestController.recordEvidence(
+                    "ANIMATED_MODEL_LOADED",
+                    mapOf("animationCount" to animationCount)
+                )
+            }
         } catch (t: Throwable) {
             status.text = "Load failed"
+            DiagnosticLogger.error(
+                module = "MainActivity",
+                operation = "MODEL_DISPLAY",
+                throwable = t,
+                details = mapOf(
+                    "displayName" to name,
+                    "format" to prepared.stats.format,
+                    "source" to source
+                ),
+                operationId = operationId
+            )
+            DiagnosticLogger.event(
+                "STATE",
+                "MODEL_LOAD_STATE_CHANGED",
+                mapOf("stateBefore" to "loading", "stateAfter" to "failed"),
+                operationId = operationId
+            )
             AlertDialog.Builder(this)
                 .setTitle("Could not display model")
                 .setMessage(t.message ?: t.javaClass.simpleName)
