@@ -1,5 +1,6 @@
 package com.edgar.viewer3d
 
+import android.os.SystemClock
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -19,23 +20,104 @@ object OcctStepImporter {
     fun parse(
         name: String,
         sourceBytes: ByteArray,
-        workDir: File
+        workDir: File,
+        operationId: String? = null
     ): MeshData {
-        loadError?.let {
-            error(
-                "STEP/STP support is unavailable on this device/build: " +
-                    (it.message ?: it.javaClass.simpleName)
-            )
-        }
+        var stage = "native_library_check"
+        val started = SystemClock.elapsedRealtime()
 
-        val suffix = "." + name.substringAfterLast('.', "step").lowercase()
-        val temp = File.createTempFile("viewer_step_", suffix, workDir)
         try {
-            temp.outputStream().use { it.write(sourceBytes) }
-            val packed = nativeLoadStep(temp.absolutePath)
-            return unpack(name, packed)
-        } finally {
-            runCatching { temp.delete() }
+            loadError?.let {
+                error(
+                    "STEP/STP support is unavailable on this device/build: " +
+                        (it.message ?: it.javaClass.simpleName)
+                )
+            }
+            DiagnosticLogger.event(
+                "PROCESSING",
+                "STEP_OCCT_AVAILABLE",
+                mapOf("available" to true),
+                operationId = operationId
+            )
+
+            stage = "temporary_input_write"
+            val suffix = "." + name.substringAfterLast('.', "step").lowercase()
+            val temp = File.createTempFile("viewer_step_", suffix, workDir)
+            try {
+                temp.outputStream().use { it.write(sourceBytes) }
+                require(temp.exists() && temp.length() == sourceBytes.size.toLong()) {
+                    "STEP temporary input verification failed."
+                }
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "STEP_TEMP_INPUT_READY",
+                    mapOf(
+                        "displayName" to name,
+                        "byteSize" to sourceBytes.size,
+                        "suffix" to suffix
+                    ),
+                    operationId = operationId
+                )
+
+                stage = "native_occt_load_and_tessellate"
+                val nativeStarted = SystemClock.elapsedRealtime()
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "STEP_NATIVE_TESSELLATION_STARTED",
+                    mapOf("displayName" to name),
+                    operationId = operationId
+                )
+                val packed = nativeLoadStep(temp.absolutePath)
+                require(packed.isNotEmpty()) {
+                    "OCCT returned an empty STEP mesh payload."
+                }
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "STEP_NATIVE_TESSELLATION_COMPLETED",
+                    mapOf(
+                        "packedBytes" to packed.size,
+                        "durationMs" to (SystemClock.elapsedRealtime() - nativeStarted)
+                    ),
+                    operationId = operationId
+                )
+
+                stage = "bridge_unpack"
+                val mesh = unpack(name, packed)
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "STEP_BRIDGE_UNPACKED",
+                    mapOf(
+                        "vertices" to mesh.vertexCount,
+                        "triangles" to mesh.triangleCount,
+                        "unit" to mesh.unit,
+                        "durationMs" to (SystemClock.elapsedRealtime() - started)
+                    ),
+                    operationId = operationId
+                )
+                return mesh
+            } finally {
+                if (!temp.delete() && temp.exists()) {
+                    DiagnosticLogger.warning(
+                        "STEP_TEMP_DELETE_FAILED",
+                        mapOf("fileName" to temp.name),
+                        operationId = operationId
+                    )
+                }
+            }
+        } catch (t: Throwable) {
+            DiagnosticLogger.error(
+                module = "OcctStepImporter",
+                operation = "STEP_IMPORT",
+                throwable = t,
+                details = mapOf(
+                    "displayName" to name,
+                    "sourceBytes" to sourceBytes.size,
+                    "stage" to stage,
+                    "durationMs" to (SystemClock.elapsedRealtime() - started)
+                ),
+                operationId = operationId
+            )
+            throw t
         }
     }
 
