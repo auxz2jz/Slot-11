@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/occt-step-v0.5.0
+      - feature/auto-rotate-v0.6.0
   workflow_dispatch:
 
 permissions:
@@ -104,7 +105,7 @@ jobs:
           retention-days: 30
 
   build:
-    name: Build v0.5.1 APK
+    name: Build v0.6.0 APK
     needs: occt
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -161,7 +162,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Android3DViewer-v0.5.1-debug-arm64
+          name: Android3DViewer-v0.6.0-debug-arm64
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
