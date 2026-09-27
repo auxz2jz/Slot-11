@@ -6,7 +6,7 @@
 - Package: `com.edgar.viewer3d`
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
-- Current feature branch under development: **v0.5.0 STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
+- Current feature branch under development: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -130,7 +130,34 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** install and device-test the already-built v0.5.0 STEP/STP candidate using `TESTING.md` and `STEP_TEST_PLAN.md`. Keep v0.4.0 as VERIFIED until those tests pass.
+**Exact next development/test action:** install and device-test v0.5.1. First verify that `test_object_binary.stl` and `test_object_ascii.stl` are no longer greyed out in Android Files when opened from the app. Then test the two STL parser paths. Keep v0.4.0 as VERIFIED until a newer candidate passes user testing.
+
+## v0.5.1 STL picker compatibility candidate
+User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
+
+Targeted fix:
+- internal `ACTION_OPEN_DOCUMENT` picker now uses `*/*` without `EXTRA_MIME_TYPES` filtering;
+- extension and parser validation remain authoritative after selection;
+- Android Open-With manifest includes additional common STL MIME aliases;
+- STL parser source itself was not changed because current evidence does not implicate parsing.
+
+v0.5.1 build:
+- versionCode: 6
+- versionName: 0.5.1
+- GitHub Actions run: `36293472169`
+- build result: **SUCCESS**
+- APK artifact: `Android3DViewer-v0.5.1-debug-arm64`
+- artifact ID: `10922617848`
+- artifact ZIP SHA-256: `c9f5c11efadb6b5ededbe5cb27b11bcc7dc99565b53616446f6c3cdecc3f5d29`
+- extracted APK SHA-256: `489cf4072ca8ff8a45646b912fe2a898fc7bbf03386769252abf2f04680386ba`
+- status: **CANDIDATE — CI BUILT, DEVICE TEST REQUIRED**
+
+Format regression pack:
+- one asymmetric 40 x 30 x 20 mm L-shaped object generated in GLB, embedded glTF, binary STL, ASCII STL, OBJ, 3MF, AMF, X3D, ASCII PLY, OFF, STEP and STP;
+- both STL variants validated independently before device testing;
+- STEP/STP round-tripped through CadQuery/Open CASCADE at the expected dimensions.
+
+**Exact next action:** install v0.5.1, open the generated format pack through the app's **Open** button, confirm both STL entries are selectable, then test binary STL first and ASCII STL second. If a selectable STL then fails, capture the exact error dialog; that would be new parser-level evidence.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
