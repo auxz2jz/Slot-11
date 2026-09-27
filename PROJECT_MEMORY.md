@@ -8,7 +8,8 @@
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
 - Last feature checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`candidate/v0.5.1-stl-animation-tested`)
 - Last tested feature checkpoint: **v0.6.0 auto-rotate / turntable** (`candidate/v0.6.0-auto-rotate-tested`)
-- Current development branch: **v0.7.0 Perspective / Orthographic projection** (`feature/projection-v0.7.0`)
+- Projection-fix checkpoint: **v0.7.1 Perspective / Orthographic** (`candidate/v0.7.1-projection-fix-untested`)
+- Current development branch: **v0.8.0 diagnostics + guided testing** (`feature/diagnostics-v0.8.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -132,7 +133,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** fix v0.7.0 orthographic framing and pinch zoom as v0.7.1 using camera depth to the normalized model center; retest T-015 before starting named views.
+**Exact next development/test action:** build and device-test v0.8.0 diagnostic/guided-testing infrastructure. Verify Help → Test This Version, objective evidence gating, Expected Behavior Failed, Export Diagnostics ZIP, and normal viewer behavior. Retest the inherited v0.7.1 projection fix during DISPLAY_PROJECTION before starting named views.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -266,6 +267,55 @@ Corrective design for v0.7.1:
 
 v0.7.0 projection status: **FAILED DEVICE TEST — DO NOT PROMOTE**.
 Next candidate: **v0.7.1 projection framing/zoom fix**.
+
+## v0.8.0 diagnostics and guided-testing architecture
+User supplied a program-agnostic diagnostic/testing architecture and explicitly required it to be adapted to this software's actual features rather than copied from another project.
+
+Inspection found the actual viewer interaction surface:
+- Open / Android Files / Open With
+- Recent
+- Fit
+- Info
+- Shot
+- Anim / Next
+- Quality
+- Display backgrounds, lighting, sun, Auto-rotate speed/direction, Projection
+- one-finger orbit
+- two-finger pan/pinch
+- background model read/import
+- GLB repair/conversion
+- native STEP processing
+- screenshot callback/save
+- automatic render/animation/auto-rotate state
+
+No text-entry controls, keyboard shortcuts, sliders, or import-cancel action currently exist, so diagnostics do not invent them.
+
+v0.8.0 source adds:
+- central structured JSONL diagnostic sessions with UUID, UTC/elapsed time, sequence, app/build, request/operation correlation, active test/step and structured details;
+- bounded recent-event history and bounded session retention;
+- safe environment/input metadata;
+- chronological caught-error logging with stack traces;
+- uncaught-crash preservation and previous-crash export;
+- semantic user-action / request / state / result separation;
+- result verification for model display, screenshot output, touch camera changes and auto-rotate;
+- staged STEP/OCCT diagnostics;
+- permanent guided-test definitions for Core Viewer, Display Controls, Animation and File Workflow;
+- objective evidence gating plus human visual confirmation where needed;
+- Expected Behavior Failed / Blocked / Cancel controls;
+- persisted guided-test current-step/result state for interrupted tests;
+- explicit local Export Diagnostics and Export Test + Diagnostics ZIP;
+- privacy rule: no automatic upload and no source 3D model content in the package.
+
+Every future important feature must add/update its action logging, internal result logging, error path, test criteria, PASS/FAIL conditions and diagnostic-export relevance.
+
+Known v0.8.0 gaps that remain honest roadmap work:
+- parser-specific progress percentages are not universal;
+- import cancellation is not implemented;
+- long-operation stall watchdog is not yet implemented;
+- detailed in-native-loop OCCT progress is not exposed;
+- GPU/FPS/backend diagnostics remain future work.
+
+The v0.7.1 projection fix was checkpointed before diagnostics work. v0.8.0 inherits it but does not make it verified.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
