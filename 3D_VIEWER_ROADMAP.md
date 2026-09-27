@@ -20,7 +20,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE Compact five-button top and bottom control rows.
 - DONE Studio ambient/fill lighting presets.
 - DONE glTF animation play/pause and next animation — user-verified with a three-clip GLB fixture.
-- TODO Auto-rotate with adjustable speed/direction.
+- CANDIDATE v0.6.0 Auto-rotate / turntable with Slow/Normal/Fast speed and Left/Right direction; device validation pending.
 - TODO Perspective / orthographic projection switch.
 - TODO Front/back/left/right/top/bottom/isometric named views.
 - TODO Save/restore camera bookmarks.
