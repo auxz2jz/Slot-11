@@ -896,6 +896,7 @@ class MainActivity : Activity() {
     }
 
     private fun setOrthographicProjection(enabled: Boolean) {
+        val oldValue = orthographicProjection
         orthographicProjection = enabled
         if (enabled) {
             updateProjectionForFrame()
@@ -904,6 +905,20 @@ class MainActivity : Activity() {
             restorePerspectiveProjection()
             toast("Perspective projection")
         }
+        DiagnosticLogger.event(
+            "STATE",
+            "PROJECTION_CHANGED",
+            mapOf(
+                "oldMode" to if (oldValue) "Orthographic" else "Perspective",
+                "newMode" to if (enabled) "Orthographic" else "Perspective",
+                "viewportWidth" to viewer.view.viewport.width,
+                "viewportHeight" to viewer.view.viewport.height
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "PROJECTION_CHANGED",
+            mapOf("newMode" to if (enabled) "Orthographic" else "Perspective")
+        )
     }
 
     private fun restorePerspectiveProjection() {
@@ -985,24 +1000,63 @@ class MainActivity : Activity() {
     private fun setAutoRotateEnabled(enabled: Boolean) {
         if (enabled) {
             if (viewer.asset == null) {
+                DiagnosticLogger.warning(
+                    "AUTO_ROTATE_START_IGNORED",
+                    mapOf("reason" to "no_model")
+                )
                 toast("Open a model before starting Auto-rotate.")
                 return
             }
+            cameraManipulator.getLookAt(
+                autoRotateStartEye,
+                autoRotateStartTarget,
+                projectionUp
+            )
+            autoRotateEvidencePending = true
             autoRotateEnabled = true
             autoRotateLastFrameNanos = 0L
             restartAutoRotateGrab()
-            toast("Auto-rotate on • ${autoRotateSpeedName()} • ${autoRotateDirectionName()}")
+            DiagnosticLogger.event(
+                "STATE",
+                "AUTO_ROTATE_STATE_CHANGED",
+                mapOf(
+                    "oldValue" to false,
+                    "newValue" to true,
+                    "speed" to autoRotateSpeedName(),
+                    "direction" to autoRotateDirectionName()
+                )
+            )
+            toast(
+                "Auto-rotate on • " +
+                    autoRotateSpeedName() + " • " +
+                    autoRotateDirectionName()
+            )
         } else {
             stopAutoRotate(showToast = true)
         }
     }
 
-    private fun stopAutoRotate(showToast: Boolean) {
+    private fun stopAutoRotate(
+        showToast: Boolean,
+        reason: String = "requested"
+    ) {
         val wasEnabled = autoRotateEnabled
         autoRotateEnabled = false
+        autoRotateEvidencePending = false
         autoRotateLastFrameNanos = 0L
         autoRotateOffsetPx = 0f
         endAutoRotateGrab()
+        if (wasEnabled) {
+            DiagnosticLogger.event(
+                "STATE",
+                "AUTO_ROTATE_STATE_CHANGED",
+                mapOf(
+                    "oldValue" to true,
+                    "newValue" to false,
+                    "reason" to reason
+                )
+            )
+        }
         if (showToast && wasEnabled) toast("Auto-rotate off")
     }
 
@@ -1063,6 +1117,36 @@ class MainActivity : Activity() {
             autoRotateOriginY
         )
 
+        if (autoRotateEvidencePending) {
+            cameraManipulator.getLookAt(
+                autoRotateCurrentEye,
+                autoRotateCurrentTarget,
+                projectionUp
+            )
+            val delta = cameraDelta(
+                autoRotateStartEye,
+                autoRotateStartTarget,
+                autoRotateCurrentEye,
+                autoRotateCurrentTarget
+            )
+            if (delta > 0.0001) {
+                autoRotateEvidencePending = false
+                DiagnosticLogger.event(
+                    "STATE",
+                    "AUTO_ROTATE_CAMERA_CHANGED",
+                    mapOf(
+                        "cameraDelta" to delta,
+                        "speed" to autoRotateSpeedName(),
+                        "direction" to autoRotateDirectionName()
+                    )
+                )
+                GuidedTestController.recordEvidence(
+                    "AUTO_ROTATE_CAMERA_CHANGED",
+                    mapOf("cameraDelta" to delta)
+                )
+            }
+        }
+
         val restartThreshold = (surface.width.coerceAtLeast(1) * 0.25f).coerceAtLeast(80f)
         if (kotlin.math.abs(autoRotateOffsetPx) >= restartThreshold) {
             endAutoRotateGrab()
@@ -1104,7 +1188,20 @@ class MainActivity : Activity() {
         indirectLight?.setIntensity(environment)
         val manager = viewer.engine.lightManager
         manager.setIntensity(manager.getInstance(viewer.light), sun)
-        toast("$name lighting")
+        DiagnosticLogger.event(
+            "STATE",
+            "LIGHTING_CHANGED",
+            mapOf(
+                "preset" to name,
+                "environmentIntensity" to environment,
+                "sunIntensity" to sun
+            )
+        )
+        GuidedTestController.recordEvidence(
+            "LIGHTING_CHANGED",
+            mapOf("preset" to name)
+        )
+        toast(name + " lighting")
     }
 
     private fun setBackground(r: Double, g: Double, b: Double) {
@@ -1112,12 +1209,30 @@ class MainActivity : Activity() {
         options.clear = true
         options.clearColor = doubleArrayOf(r, g, b, 1.0)
         viewer.renderer.clearOptions = options
+        DiagnosticLogger.event(
+            "STATE",
+            "BACKGROUND_CHANGED",
+            mapOf("r" to r, "g" to g, "b" to b)
+        )
+        GuidedTestController.recordEvidence(
+            "BACKGROUND_CHANGED",
+            mapOf("r" to r, "g" to g, "b" to b)
+        )
     }
 
     private fun setSunIntensity(value: Float) {
         val manager = viewer.engine.lightManager
         manager.setIntensity(manager.getInstance(viewer.light), value)
-        toast("Sun ${(value / 1000).toInt()}k lux")
+        DiagnosticLogger.event(
+            "STATE",
+            "SUN_CHANGED",
+            mapOf("intensityLux" to value)
+        )
+        GuidedTestController.recordEvidence(
+            "SUN_CHANGED",
+            mapOf("intensityLux" to value)
+        )
+        toast("Sun " + (value / 1000).toInt() + "k lux")
     }
 
     private fun captureScreenshot() {
