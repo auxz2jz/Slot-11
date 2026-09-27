@@ -66,9 +66,9 @@ object DiagnosticLogger {
             rootDir = File(appContext.filesDir, "diagnostics").apply { mkdirs() }
             rotatePreviousCrashArtifacts()
             readAppVersion()
+            initialized = true
             startSessionLocked("app_session", null)
             installCrashHandlerLocked()
-            initialized = true
         }
     }
 
