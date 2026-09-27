@@ -154,5 +154,17 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO LOD controls.
 - TODO FPS/frame-time diagnostics.
 - TODO GPU/backend diagnostics.
+- TODO Persistent structured diagnostic Action Trace with correlation IDs.
+- TODO Global crash/error preservation with recent-event context.
+- TODO Export Diagnostics ZIP with privacy/redaction.
+- TODO Guided **Test This Version** workflow with persistent progress and TXT/JSON reports.
 - TODO Crash-safe last-session recovery.
 - PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
+
+## 12. Development safeguards
+- DONE Adopt current Master Instruction Library mapping/documentation without moving working Android source.
+- DONE Preserve exact v0.4.0 user-verified checkpoint on `stable/v0.4.0-tested`.
+- DONE Separate v0.5.0 STEP candidate from verified baseline.
+- DONE Add Android `TESTING.md` and `DIAGNOSTICS.md` adoption plans.
+- DONE Add `CROSS_PLATFORM_COORDINATION.md`; Windows/PC remains NOT STARTED.
+- TODO Implement diagnostics/guided testing incrementally after the current STEP candidate is device-tested, unless concrete failure evidence requires diagnostics first.
