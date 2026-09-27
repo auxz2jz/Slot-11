@@ -1,215 +1,168 @@
 # Android 3D Viewer Diagnostics
 
-This file maps Slot-11 to the Master Instruction Library `DIAGNOSTICS_STANDARD.md`.
+This project follows the current Master Instruction Library and the project's program-specific diagnostic/testing architecture.
 
-## Current status
+## Current implementation status
 
-**DOCUMENTED / NOT YET IMPLEMENTED AS A FULL DIAGNOSTIC SYSTEM**
+**v0.8.0 CANDIDATE — IMPLEMENTED IN SOURCE, DEVICE VALIDATION REQUIRED**
 
-The current app has useful user-facing error/status behavior, but repository inspection found no persistent structured diagnostic subsystem.
+Diagnostics were designed after inspecting this application's actual controls, file/import paths, renderer state, background work, and error handling. The system does not assume controls from another application.
 
-Existing signals include:
+## Actual viewer behavior covered
 
-- status text during load/display
-- Toast feedback
-- AlertDialog error messages
-- importer exceptions
-- model statistics
-- screenshot results
-- GitHub Actions build logs
+User-facing controls and workflows instrumented in v0.8.0:
 
-These are useful but do not satisfy the Master Diagnostics Standard because they are not a persistent correlated event history.
+- Open / Android Files picker
+- Android Open With
+- Recent-file list and reload
+- Fit
+- Info
+- Shot / screenshot
+- Anim play/pause
+- Next animation
+- Quality mode
+- Display menu selection
+- background presets
+- lighting presets
+- sun intensity
+- Auto-rotate start/stop, speed and direction
+- Perspective / Orthographic projection
+- one-finger orbit
+- two-finger pan / pinch zoom
+- Help
+- Test This Version
+- Export Diagnostics
 
-## Required event model for future implementation
+Important automatic/background operations covered:
 
-Use one central event logger whenever practical.
+- file read worker
+- importer dispatch
+- mesh parsing/conversion
+- GLB auto-repair
+- mesh-to-GLB encoding
+- STEP temporary-input creation
+- OCCT STEP native tessellation
+- JNI packed-mesh validation/unpack
+- Filament model display request/result
+- auto-rotate camera movement
+- screenshot render callback and background save
+- diagnostic export worker
+- application/session lifecycle
+- uncaught crash preservation
 
-Minimum semantic categories:
+There are currently no program text-entry fields, keyboard shortcuts, sliders, or user-cancellable import jobs, so diagnostics do not invent those controls.
 
-- `USER_ACTION`
-- `OPERATION_START`
-- `STATE_TRANSITION` / `PROGRESS`
-- `OPERATION_RESULT`
-- `ERROR`
-- `TEST_VERIFICATION` / `TEST_RESULT`
-- `EXPORT_DIAGNOSTICS`
+## Core event model
 
-Useful fields:
+The central logger is DiagnosticLogger.kt.
 
-- sequence number
+Each JSONL event includes:
+
+- diagnostic session UUID
+- monotonically increasing sequence number
 - UTC timestamp
-- monotonic elapsed time
-- app session ID
-- event ID
-- correlation ID
-- operation/run ID
-- test session ID / step ID
-- category
-- severity
-- screen/module/control
-- requested operation
-- safe parameters
-- state before/after
-- progress
-- duration
-- result/success
-- error type/message
-- stack-trace reference
-- app version/build
+- monotonic elapsed milliseconds
+- category and event name
+- exact app version/build code
+- optional guided-test ID and step ID
+- optional request ID and operation ID
+- structured details
 
-## Priority operations to instrument
+Primary categories currently used include SESSION, APP, UI_ACTION, NAVIGATION, INPUT, FILE, PROCESSING, STATE, OUTPUT, TEST, DIAGNOSTIC, WARNING, and ERROR.
 
-### Model open/import
+The full ordered event stream is the primary source for locating the first real failure.
 
-Record separately:
+## User action versus software result
 
-1. user selected/opened file;
-2. extension/MIME/precondition result;
-3. importer selected;
-4. import started;
-5. parsing/conversion/tessellation progress where practical;
-6. Filament model load started;
-7. visible asset/result validation;
-8. final success/failure and duration.
+A control press is never treated as proof of success.
 
-For STEP/STP specifically, include:
+For model open, the trace separates picker request/return, model-load request, loading state, input read, import request/result, display request, MODEL_DISPLAYED result, and displayed state. An import/display error is recorded at the stage where it first occurs.
 
-- OCCT native library availability
-- input copied to temporary file
-- STEP read status
-- roots transferred
-- tessellation started/completed
-- resulting vertex/triangle counts
-- mesh bridge unpack/validation
-- final Filament load result
+For screenshots, Shot creates SCREENSHOT_REQUESTED, then the rendered frame is captured, PNG writing is attempted, the destination is verified non-empty, and only then is SCREENSHOT_SAVED recorded.
 
-### File picker / Open With
+For Auto-rotate, enabling the state does not satisfy the guided test. The camera manipulator must actually change.
 
-Record request, return/cancel, permission result, safe file metadata, and subsequent load correlation.
+Touch move events are summarized rather than logged frame-by-frame. The gesture summary records maximum pointer count, move count, duration, camera before/after delta, gesture classification, and cancellation.
 
-### Fit / display / quality / animation controls
+## Importer diagnostics
 
-Record the semantic user action and resulting state. A button tap alone must not be treated as success.
+ModelImporter.kt records importer dispatch, safe input metadata, GLB repair results, parsed mesh counts/bounds, mesh-to-GLB output size, and importer errors with operation correlation.
 
-### Screenshot
+OcctStepImporter.kt records native OCCT availability, temporary input verification, native tessellation start/completion, packed result size/duration, bridge unpack/validation, resulting geometry counts, and exact failing stage on error.
 
-Record request, destination creation, bytes written/stream completion, and final result.
+The native C++ bridge itself remains unchanged in v0.8.0; Kotlin-side staged diagnostics surround its call and validate its payload.
 
-### Recent files
+## Persistent sessions and retention
 
-Record selection, persisted URI access result, and reopen result.
+A normal app launch starts a diagnostic session. Starting a guided test starts a fresh diagnostic session.
 
-## Persistent Action Trace
+Session data remains local under the application's private files area. The logger keeps a bounded recent-event buffer and a bounded number of historical session directories.
 
-Future implementation should add:
+Guided-test progress is persisted after meaningful changes. If the app is interrupted, saved machine-readable state retains the test ID and current step so a later diagnostic export can identify where testing stopped.
 
-- bounded persistent JSONL or equivalent trace
-- current + rotated previous trace
-- bounded recent-event buffer
-- prompt flush for operation starts, major state changes, errors, test results, and crash markers
+## Error and crash preservation
 
-Do not allow unlimited log growth.
+Caught important failures are routed through the central error logger with exception type, message, stack trace, module, operation, session/test/step context, operation/request identifiers where available, safe state/input details, and duration when known.
 
-## Error/crash preservation
+An application-level uncaught-exception handler attempts to preserve session ID, UTC timestamp, active test/step, thread, exception type/message/stack, event-log path, and the crashed session event trail. It then delegates to Android's prior handler.
 
-Incrementally add:
+On the next launch, crash artifacts rotate to previous_crash.json and previous_crashed_session_events.jsonl for export.
 
-- central caught-error logging with stack traces/cause chains where useful
-- active operation/correlation context
-- global uncaught-exception preservation when supported
-- recent diagnostic events in crash record
-- normal Android crash handling must continue afterward
+## Input and environment metadata
 
-## Progress/stall diagnostics
+The system records only debugging-relevant information such as app/build, Android/SDK, manufacturer/model, ABI, CPU count, total RAM, display size/density, locale, model display name, extension/format, size, geometry counts, animation count, unit/bounds, and load source.
 
-Long operations such as large 3MF/STEP import should report meaningful progress where technically available.
-
-When possible record:
-
-- current import stage
-- processed objects/faces/triangles
-- elapsed time
-- generated vertices/triangles
-- output bytes
-- last meaningful progress time
-
-A future watchdog may record a stall when an operation remains active without meaningful progress. Add this only after the basic event logger is stable.
-
-## Result validation
-
-A process returning without exception is not sufficient.
-
-Examples:
-
-Model load PASS evidence:
-- importer/conversion completed
-- output mesh/GLB is non-empty
-- Filament asset exists
-- expected model statistics are sane
-- no correlated fatal error occurred
-
-Screenshot PASS evidence:
-- output destination created
-- image bytes written
-- write completed successfully
-
-STEP PASS evidence:
-- OCCT read/transfer completed
-- tessellation produced non-zero geometry
-- bridge validation passed
-- Filament asset loaded
+It does not collect precise location, credentials, account data, or source 3D model contents.
 
 ## Diagnostic export
 
-A future **Export Diagnostics** control should produce a ZIP containing, when applicable:
+The visible Export Diagnostics action is available through Help in the v0.8.0 candidate.
 
-- `README.txt`
-- `summary.txt`
-- `events.jsonl`
-- `action_trace.txt`
-- `test_report.txt`
-- `test_report.json`
-- `errors.txt`
-- crash record
-- device/app metadata
-- import/operation result report
-- recent pre-failure events
+The exporter creates a local ZIP in Downloads/3DViewerDiagnostics when supported. Package contents include, when applicable:
 
-Do not automatically include the user's private source 3D models.
+- README.txt
+- summary.txt
+- device_app_info.txt
+- input_info.txt
+- events.jsonl
+- guided_test_results.json
+- guided_test_results.txt
+- errors.txt
+- previous_crash.json
+- previous_crashed_session_events.jsonl
 
-The export operation must log its own STARTED / COMPLETED / FAILED result.
+The ZIP is verified non-empty and export itself has requested/completed/failed events. Diagnostics are never uploaded automatically.
 
-## Privacy/redaction
+## Known diagnostic gaps after v0.8.0
 
-Do not persist unnecessary:
+These are deliberately not faked:
 
-- passwords/tokens
-- private account data
-- precise location
-- full sensitive file paths/content URIs
-- source model contents
+- large-file progress percentage is not available from every parser yet
+- import cancellation is not yet implemented
+- a long-operation stall watchdog is not yet implemented
+- GPU/FPS/backend diagnostics remain roadmap work
+- detailed progress from inside the native OCCT C++ tessellation loop is not yet exposed through JNI
 
-Prefer safe display names, extensions, sizes, generated IDs, and redacted paths.
+Those capabilities should be added incrementally when the underlying application support exists.
 
-## Incremental implementation order
+## Recovery workflow
 
-Do not perform a broad diagnostic rewrite.
+1. identify the failed guided-test step
+2. inspect summary.txt
+3. inspect events.jsonl chronologically
+4. locate the earliest abnormal request/state/result
+5. inspect errors/crash data
+6. make the smallest evidence-based fix
+7. rebuild
+8. repeat the same test
+9. preserve the new result
 
-Recommended logical steps:
+## Baseline rule
 
-1. central structured logger + bounded persistent trace;
-2. model-open/import correlation and result events;
-3. caught-error + stack-trace preservation;
-4. screenshot/recent/display semantic events;
-5. crash preservation;
-6. Export Diagnostics;
-7. guided-test integration;
-8. progress/stall monitoring for long imports.
+The diagnostics branch does not replace a known-good viewer merely because it compiles.
 
-Each step should be its own candidate/change set and must preserve verified viewer behavior.
-
-## Current release rule
-
-v0.4.0 remains the verified baseline.
-
-v0.5.0 STEP/STP is a built but unverified candidate. Do not add unrelated diagnostic implementation to that candidate before its first device validation unless diagnostics are needed to investigate a concrete failure.
+- v0.4.0 remains the last fully regression-verified baseline
+- v0.5.1 STL and animation behavior were feature-verified
+- v0.6.0 Auto-rotate was feature-verified
+- v0.7.1 projection fix is checkpointed separately and still requires device retest
+- v0.8.0 diagnostics/guided testing is a separate candidate until built and tested
