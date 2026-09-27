@@ -370,6 +370,7 @@ object GuidedTestController {
             mapOf("overallStatus" to overallStatus.name, "firstFailedStep" to step.id)
         )
         DiagnosticLogger.clearTestContext()
+        evidence.clear()
         activeDefinition = null
         currentStepIndex = -1
         persistState()
@@ -398,6 +399,7 @@ object GuidedTestController {
             mapOf("overallStatus" to overallStatus.name, "blockedStep" to step.id)
         )
         DiagnosticLogger.clearTestContext()
+        evidence.clear()
         activeDefinition = null
         currentStepIndex = -1
         persistState()
@@ -423,6 +425,7 @@ object GuidedTestController {
             mapOf("message" to message, "stepId" to step?.id)
         )
         DiagnosticLogger.clearTestContext()
+        evidence.clear()
         activeDefinition = null
         currentStepIndex = -1
         persistState()
@@ -456,7 +459,9 @@ object GuidedTestController {
         }
 
         val evidenceKeys = JSONArray()
-        evidence.keys.forEach { evidenceKeys.put(it) }
+        currentStep()?.requiredEvidence
+            ?.filter { evidence.containsKey(it) }
+            ?.forEach { evidenceKeys.put(it) }
 
         return JSONObject()
             .put("testId", lastTestId ?: "")
