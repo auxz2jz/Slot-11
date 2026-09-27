@@ -16,6 +16,7 @@ import android.provider.OpenableColumns
 import android.util.Base64
 import android.view.Choreographer
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -29,6 +30,7 @@ import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.View as FilamentView
+import com.google.android.filament.utils.Manipulator
 import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
 import java.io.File
@@ -48,7 +50,16 @@ class MainActivity : Activity() {
     private lateinit var viewer: ModelViewer
     private lateinit var status: TextView
     private lateinit var choreographer: Choreographer
+    private lateinit var cameraManipulator: Manipulator
     private var loopActive = false
+    private var autoRotateEnabled = false
+    private var autoRotateSpeedIndex = 1
+    private var autoRotateDirection = 1f
+    private var autoRotateLastFrameNanos = 0L
+    private var autoRotateGrabActive = false
+    private var autoRotateOffsetPx = 0f
+    private var autoRotateOriginX = 0
+    private var autoRotateOriginY = 0
     private var currentName = "No model"
     private var currentStats = ModelStats("—", 0)
     private var quality = 1
@@ -58,6 +69,7 @@ class MainActivity : Activity() {
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (!loopActive) return
+            updateAutoRotate(frameTimeNanos)
             viewer.render(frameTimeNanos)
             choreographer.postFrameCallback(this)
         }
@@ -68,9 +80,16 @@ class MainActivity : Activity() {
         window.statusBarColor = Color.rgb(18, 18, 18)
         window.navigationBarColor = Color.rgb(18, 18, 18)
         buildUi()
-        viewer = ModelViewer(surface)
+        cameraManipulator = Manipulator.Builder()
+            .targetPosition(0f, 0f, -4f)
+            .viewport(surface.width.coerceAtLeast(1), surface.height.coerceAtLeast(1))
+            .build(Manipulator.Mode.ORBIT)
+        viewer = ModelViewer(surface, manipulator = cameraManipulator)
         configureStudioLighting()
         surface.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN && autoRotateEnabled) {
+                stopAutoRotate(showToast = true)
+            }
             viewer.onTouchEvent(event)
             true
         }
@@ -91,6 +110,8 @@ class MainActivity : Activity() {
     override fun onPause() {
         loopActive = false
         choreographer.removeFrameCallback(frameCallback)
+        endAutoRotateGrab()
+        autoRotateLastFrameNanos = 0L
         super.onPause()
     }
 
@@ -157,7 +178,12 @@ class MainActivity : Activity() {
         val top = horizontalBar()
         addButton(top, "Open") { openFile() }
         addButton(top, "Recent") { showRecent() }
-        addButton(top, "Fit") { if (viewer.asset != null) viewer.resetToDefaultState() }
+        addButton(top, "Fit") {
+            if (viewer.asset != null) {
+                stopAutoRotate(showToast = false)
+                viewer.resetToDefaultState()
+            }
+        }
         addButton(top, "Info") { showInfo() }
         addButton(top, "Shot") { captureScreenshot() }
         root.addView(top, FrameLayout.LayoutParams(
@@ -228,6 +254,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadUri(uri: Uri) {
+        stopAutoRotate(showToast = false)
         val name = displayName(uri) ?: uri.lastPathSegment ?: "model"
         if (!ModelImporter.isSupported(name)) {
             toast("Unsupported extension. Use GLB, glTF, STL, OBJ, 3MF, STEP/STP, AMF, X3D, PLY, or OFF.")
@@ -386,7 +413,10 @@ class MainActivity : Activity() {
         val options = arrayOf(
             "Background: black", "Background: studio gray", "Background: light gray",
             "Lighting: soft", "Lighting: studio", "Lighting: bright",
-            "Sun: 50%", "Sun: 100%", "Sun: 150%"
+            "Sun: 50%", "Sun: 100%", "Sun: 150%",
+            if (autoRotateEnabled) "Auto-rotate: Stop" else "Auto-rotate: Start",
+            "Auto-rotate speed: ${autoRotateSpeedName()}",
+            "Auto-rotate direction: ${autoRotateDirectionName()}"
         )
         AlertDialog.Builder(this).setTitle("Display").setItems(options) { _, which ->
             when (which) {
@@ -399,8 +429,121 @@ class MainActivity : Activity() {
                 6 -> setSunIntensity(50_000f)
                 7 -> setSunIntensity(100_000f)
                 8 -> setSunIntensity(150_000f)
+                9 -> setAutoRotateEnabled(!autoRotateEnabled)
+                10 -> {
+                    autoRotateSpeedIndex = (autoRotateSpeedIndex + 1) % 3
+                    toast("Auto-rotate speed: ${autoRotateSpeedName()}")
+                }
+                11 -> {
+                    autoRotateDirection *= -1f
+                    restartAutoRotateGrab()
+                    toast("Auto-rotate direction: ${autoRotateDirectionName()}")
+                }
             }
         }.show()
+    }
+
+    private fun autoRotateSpeedName(): String = when (autoRotateSpeedIndex) {
+        0 -> "Slow"
+        1 -> "Normal"
+        else -> "Fast"
+    }
+
+    private fun autoRotatePixelsPerSecond(): Float = when (autoRotateSpeedIndex) {
+        0 -> 25f
+        1 -> 50f
+        else -> 100f
+    }
+
+    private fun autoRotateDirectionName(): String =
+        if (autoRotateDirection > 0f) "Right" else "Left"
+
+    private fun setAutoRotateEnabled(enabled: Boolean) {
+        if (enabled) {
+            if (viewer.asset == null) {
+                toast("Open a model before starting Auto-rotate.")
+                return
+            }
+            autoRotateEnabled = true
+            autoRotateLastFrameNanos = 0L
+            restartAutoRotateGrab()
+            toast("Auto-rotate on • ${autoRotateSpeedName()} • ${autoRotateDirectionName()}")
+        } else {
+            stopAutoRotate(showToast = true)
+        }
+    }
+
+    private fun stopAutoRotate(showToast: Boolean) {
+        val wasEnabled = autoRotateEnabled
+        autoRotateEnabled = false
+        autoRotateLastFrameNanos = 0L
+        autoRotateOffsetPx = 0f
+        endAutoRotateGrab()
+        if (showToast && wasEnabled) toast("Auto-rotate off")
+    }
+
+    private fun endAutoRotateGrab() {
+        if (autoRotateGrabActive) {
+            runCatching { cameraManipulator.grabEnd() }
+            autoRotateGrabActive = false
+        }
+    }
+
+    private fun restartAutoRotateGrab() {
+        endAutoRotateGrab()
+        autoRotateOffsetPx = 0f
+        autoRotateLastFrameNanos = 0L
+    }
+
+    private fun beginAutoRotateGrab(frameTimeNanos: Long) {
+        val width = surface.width.coerceAtLeast(1)
+        val height = surface.height.coerceAtLeast(1)
+        autoRotateOriginX = width / 2
+        autoRotateOriginY = height / 2
+        cameraManipulator.grabBegin(autoRotateOriginX, autoRotateOriginY, false)
+        autoRotateGrabActive = true
+        autoRotateOffsetPx = 0f
+        autoRotateLastFrameNanos = frameTimeNanos
+    }
+
+    private fun updateAutoRotate(frameTimeNanos: Long) {
+        if (!autoRotateEnabled || viewer.asset == null) return
+
+        val centerX = surface.width.coerceAtLeast(1) / 2
+        val centerY = surface.height.coerceAtLeast(1) / 2
+
+        if (!autoRotateGrabActive ||
+            centerX != autoRotateOriginX ||
+            centerY != autoRotateOriginY
+        ) {
+            endAutoRotateGrab()
+            beginAutoRotateGrab(frameTimeNanos)
+            return
+        }
+
+        if (autoRotateLastFrameNanos == 0L) {
+            autoRotateLastFrameNanos = frameTimeNanos
+            return
+        }
+
+        val elapsedNanos = (frameTimeNanos - autoRotateLastFrameNanos)
+            .coerceIn(0L, 100_000_000L)
+        autoRotateLastFrameNanos = frameTimeNanos
+        val deltaSeconds = elapsedNanos / 1_000_000_000f
+
+        autoRotateOffsetPx +=
+            autoRotatePixelsPerSecond() * autoRotateDirection * deltaSeconds
+
+        cameraManipulator.grabUpdate(
+            autoRotateOriginX + autoRotateOffsetPx.toInt(),
+            autoRotateOriginY
+        )
+
+        val restartThreshold = (surface.width.coerceAtLeast(1) * 0.25f).coerceAtLeast(80f)
+        if (kotlin.math.abs(autoRotateOffsetPx) >= restartThreshold) {
+            endAutoRotateGrab()
+            autoRotateOffsetPx = 0f
+        }
     }
 
     private fun configureStudioLighting() {
@@ -548,7 +691,10 @@ class MainActivity : Activity() {
                 Shot: save the rendered view as PNG.
                 Anim / Next anim: glTF animation controls.
                 Quality: Performance / Balanced / High.
-                Display: background, studio lighting and sun brightness.
+                Display: background, studio lighting, sun brightness and Auto-rotate.
+                Auto-rotate: continuous turntable orbit with Slow/Normal/Fast speed
+                and Left/Right direction. Touching the model stops Auto-rotate so
+                normal orbit/pan/zoom immediately takes over.
 
                 Supported now:
                 GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT, AMF, X3D, ASCII PLY and OFF geometry.
