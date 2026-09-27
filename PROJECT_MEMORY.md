@@ -132,7 +132,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** checkpoint user-verified v0.6.0, then implement Perspective / Orthographic projection switching as v0.7.0 without altering the working auto-rotate, STL, animation, STEP, or renderer/import paths unnecessarily.
+**Exact next development/test action:** fix v0.7.0 orthographic framing and pinch zoom as v0.7.1 using camera depth to the normalized model center; retest T-015 before starting named views.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -241,6 +241,31 @@ Expected changed files:
 - roadmap/project documentation only as needed.
 
 Test ID: `T-015` in `TESTING.md`.
+
+## v0.7.0 projection device-test failure — 2026-09-27
+User device test result:
+- switching Perspective <-> Orthographic works;
+- orbit, pan, rotate and Fit remain usable;
+- Orthographic starts extremely close to the model;
+- pinch zoom has no visible effect in Orthographic.
+
+Root cause confirmed against Filament 1.77.1 `OrbitManipulator`:
+- ORBIT `scroll()` moves both camera eye and target together along the gaze direction;
+- therefore eye-to-target distance remains approximately constant;
+- v0.7.0 incorrectly used eye-to-target distance as the orthographic half-height basis;
+- in Filament's ORBIT bookmark, target is only one unit in front of eye, so v0.7.0 produced an orthographic half-height of roughly `1 * 12 / 28 = 0.43`, much too tight for the normalized two-unit model;
+- because that eye-to-target distance does not change during scroll, pinch zoom also appeared disabled.
+
+Corrective design for v0.7.1:
+- keep the model normalized around viewer world center `(0,0,-4)`;
+- obtain current eye and gaze from the shared camera manipulator;
+- compute depth to the fixed model center using the dot product of `modelCenter - eye` with the normalized gaze direction;
+- derive orthographic half-height from that depth using the same 24 mm sensor / current focal-length relationship;
+- this depth changes when Filament scroll moves the camera forward/back, but remains stable under image-plane pan and orbit around the model;
+- no importer, renderer, STL, STEP, animation or auto-rotate changes.
+
+v0.7.0 projection status: **FAILED DEVICE TEST — DO NOT PROMOTE**.
+Next candidate: **v0.7.1 projection framing/zoom fix**.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
