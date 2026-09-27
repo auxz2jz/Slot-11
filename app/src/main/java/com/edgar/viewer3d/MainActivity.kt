@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
@@ -68,6 +69,19 @@ class MainActivity : Activity() {
     private var currentName = "No model"
     private var currentStats = ModelStats("—", 0)
     private var quality = 1
+    private var pendingOpenRequestId: String? = null
+    private var touchStartedElapsedMs = 0L
+    private var touchMaxPointers = 0
+    private var touchMoveCount = 0
+    private val touchStartEye = DoubleArray(3)
+    private val touchStartTarget = DoubleArray(3)
+    private val touchEndEye = DoubleArray(3)
+    private val touchEndTarget = DoubleArray(3)
+    private var autoRotateEvidencePending = false
+    private val autoRotateStartEye = DoubleArray(3)
+    private val autoRotateStartTarget = DoubleArray(3)
+    private val autoRotateCurrentEye = DoubleArray(3)
+    private val autoRotateCurrentTarget = DoubleArray(3)
     private var indirectLight: IndirectLight? = null
     private val fillLights = mutableListOf<Int>()
 
@@ -83,6 +97,11 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DiagnosticLogger.event(
+            "APP",
+            "ACTIVITY_CREATED",
+            mapOf("savedInstanceState" to (savedInstanceState != null))
+        )
         window.statusBarColor = Color.rgb(18, 18, 18)
         window.navigationBarColor = Color.rgb(18, 18, 18)
         buildUi()
@@ -93,20 +112,27 @@ class MainActivity : Activity() {
         viewer = ModelViewer(surface, manipulator = cameraManipulator)
         configureStudioLighting()
         surface.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_DOWN && autoRotateEnabled) {
-                stopAutoRotate(showToast = true)
-            }
-            viewer.onTouchEvent(event)
+            handleSurfaceTouch(event)
             true
         }
         configureBalancedQuality()
         setBackground(0.07, 0.075, 0.085)
         choreographer = Choreographer.getInstance()
-        if (intent?.action == Intent.ACTION_VIEW) intent.data?.let(::loadUri)
+        if (intent?.action == Intent.ACTION_VIEW) {
+            intent.data?.let { uri ->
+                DiagnosticLogger.event(
+                    "FILE",
+                    "OPEN_WITH_RECEIVED",
+                    mapOf("displayName" to (displayName(uri) ?: "model"))
+                )
+                loadUri(uri, source = "open_with")
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        DiagnosticLogger.event("APP", "ACTIVITY_RESUMED")
         if (!loopActive) {
             loopActive = true
             choreographer.postFrameCallback(frameCallback)
@@ -114,6 +140,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        DiagnosticLogger.event("APP", "ACTIVITY_PAUSED")
         loopActive = false
         choreographer.removeFrameCallback(frameCallback)
         endAutoRotateGrab()
@@ -142,19 +169,70 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == Intent.ACTION_VIEW) intent.data?.let(::loadUri)
+        if (intent.action == Intent.ACTION_VIEW) {
+            intent.data?.let { uri ->
+                DiagnosticLogger.event(
+                    "FILE",
+                    "OPEN_WITH_RECEIVED",
+                    mapOf("displayName" to (displayName(uri) ?: "model"))
+                )
+                loadUri(uri, source = "open_with")
+            }
+        }
     }
 
     @Deprecated("Legacy activity result keeps this first viewer dependency-light.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == OPEN_REQUEST && resultCode == RESULT_OK) {
-            data?.data?.let { uri ->
-                val flags = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
-                runCatching { contentResolver.takePersistableUriPermission(uri, flags) }
-                loadUri(uri)
-            }
+        if (requestCode != OPEN_REQUEST) return
+
+        val requestId = pendingOpenRequestId
+        pendingOpenRequestId = null
+
+        if (resultCode != RESULT_OK || data?.data == null) {
+            DiagnosticLogger.event(
+                "FILE",
+                "FILE_PICKER_CANCELLED",
+                mapOf("resultCode" to resultCode),
+                requestId = requestId
+            )
+            return
         }
+
+        val uri = data.data ?: return
+        val name = displayName(uri) ?: "model"
+        DiagnosticLogger.event(
+            "FILE",
+            "FILE_PICKER_RETURNED",
+            mapOf(
+                "displayName" to name,
+                "extension" to ModelImporter.extension(name)
+            ),
+            requestId = requestId
+        )
+        GuidedTestController.recordEvidence(
+            "FILE_PICKER_RETURNED",
+            mapOf("displayName" to name)
+        )
+
+        val flags = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, flags)
+        }.onSuccess {
+            DiagnosticLogger.event(
+                "FILE",
+                "PERSISTABLE_PERMISSION_RETAINED",
+                mapOf("displayName" to name),
+                requestId = requestId
+            )
+        }.onFailure { t ->
+            DiagnosticLogger.warning(
+                "PERSISTABLE_PERMISSION_NOT_RETAINED",
+                mapOf("displayName" to name, "message" to (t.message ?: "")),
+                requestId = requestId
+            )
+        }
+        loadUri(uri, source = "picker", parentRequestId = requestId)
     }
 
     private fun buildUi() {
@@ -186,8 +264,27 @@ class MainActivity : Activity() {
         addButton(top, "Recent") { showRecent() }
         addButton(top, "Fit") {
             if (viewer.asset != null) {
+                val operationId = DiagnosticLogger.newId("fit")
+                DiagnosticLogger.event(
+                    "STATE",
+                    "FIT_REQUESTED",
+                    mapOf("model" to currentName),
+                    operationId = operationId
+                )
                 stopAutoRotate(showToast = false)
                 viewer.resetToDefaultState()
+                DiagnosticLogger.event(
+                    "STATE",
+                    "FIT_APPLIED",
+                    mapOf("model" to currentName),
+                    operationId = operationId
+                )
+                GuidedTestController.recordEvidence(
+                    "FIT_APPLIED",
+                    mapOf("model" to currentName)
+                )
+            } else {
+                DiagnosticLogger.warning("FIT_IGNORED_NO_MODEL")
             }
         }
         addButton(top, "Info") { showInfo() }
@@ -243,11 +340,25 @@ class MainActivity : Activity() {
             minimumHeight = 0
             includeFontPadding = false
             setPadding(dp(2), 0, dp(2), 0)
-            setOnClickListener { action() }
+            setOnClickListener {
+                DiagnosticLogger.event(
+                    "UI_ACTION",
+                    "BUTTON_PRESSED",
+                    mapOf("label" to label)
+                )
+                action()
+            }
         }, LinearLayout.LayoutParams(0, dp(38), 1f))
     }
 
     private fun openFile() {
+        val requestId = DiagnosticLogger.newId("file_picker")
+        pendingOpenRequestId = requestId
+        DiagnosticLogger.event(
+            "FILE",
+            "FILE_PICKER_REQUESTED",
+            requestId = requestId
+        )
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             // Do not restrict Android's document picker by MIME type here.
