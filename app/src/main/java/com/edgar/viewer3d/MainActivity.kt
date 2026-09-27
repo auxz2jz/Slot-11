@@ -572,7 +572,7 @@ class MainActivity : Activity() {
                     operationId = operationId
                 )
 
-                val prepared = ModelImporter.prepare(name, bytes, cacheDir)
+                val prepared = ModelImporter.prepare(name, bytes, cacheDir, operationId)
                 val importDuration = SystemClock.elapsedRealtime() - importStarted
 
                 DiagnosticLogger.event(
