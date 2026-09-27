@@ -107,6 +107,24 @@ Additional v0.4.0 work:
 - Existing Android source/build layout remains authoritative.
 - Windows/PC implementation status: **NOT STARTED**; future Windows work must use an isolated ownership area and separate baseline/candidate records.
 
+## Current task — STL compatibility and format corpus
+User test evidence after installing v0.5.0:
+- STEP/STP geometry loads, but displays gray. Current root cause: the OCCT bridge uses `STEPControl_Reader` and emits only tessellated positions/indices; STEP/XCAF color/material metadata is not preserved.
+- User reports STL is still not supported. Source inspection shows the STL parser/extension route exists, but Android file selection uses `EXTRA_MIME_TYPES`, which can hide valid STL files whose provider reports an unlisted STL MIME type.
+
+Implementation plan for the next candidate:
+1. Preserve v0.4.0 VERIFIED and v0.5.0 CANDIDATE checkpoints.
+2. Remove MIME filtering from the internal `ACTION_OPEN_DOCUMENT` picker while retaining extension-based importer validation.
+3. Add common STL MIME aliases to Android Open-With intent handling.
+4. Do not change the working STL parser unless test evidence from the generated corpus proves a parser defect.
+5. Generate one consistent test object in every currently supported extension for repeatable device testing.
+6. Record STEP color preservation as a separate follow-up feature; do not mix a large XCAF/material refactor into the STL compatibility fix.
+
+Expected source changes:
+- `app/src/main/java/com/edgar/viewer3d/MainActivity.kt`
+- `app/src/main/AndroidManifest.xml`
+- version/build metadata and test/project documentation only as needed.
+
 ## Current task and exact next action
 Current task: adopt the Master Instruction Library without changing verified behavior.
 
