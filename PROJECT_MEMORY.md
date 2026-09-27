@@ -9,7 +9,8 @@
 - Last feature checkpoint: **v0.5.1 STL picker compatibility + STEP/STP via OCCT** (`candidate/v0.5.1-stl-animation-tested`)
 - Last tested feature checkpoint: **v0.6.0 auto-rotate / turntable** (`candidate/v0.6.0-auto-rotate-tested`)
 - Projection-fix checkpoint: **v0.7.1 Perspective / Orthographic** (`candidate/v0.7.1-projection-fix-untested`)
-- Current development branch: **v0.8.0 diagnostics + guided testing** (`feature/diagnostics-v0.8.0`)
+- Archived diagnostic candidate: **v0.8.0** (`archive/v0.8.0-diagnostics-export-defects`)
+- Current development branch: **v0.8.1 diagnostics export/result fix** (`feature/diagnostics-v0.8.1`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -133,7 +134,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** build and device-test v0.8.0 diagnostic/guided-testing infrastructure. Verify Help → Test This Version, objective evidence gating, Expected Behavior Failed, Export Diagnostics ZIP, and normal viewer behavior. Retest the inherited v0.7.1 projection fix during DISPLAY_PROJECTION before starting named views.
+**Exact next development/test action:** build/device-test v0.8.1, rerun a guided test, export diagnostics, and verify the ZIP contains `export_result.json`, terminal guided-test state has no stale current-step evidence, and normal viewer behavior remains intact. Then run DISPLAY_CONTROLS to retest the inherited v0.7.1 projection fix.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -316,6 +317,41 @@ Known v0.8.0 gaps that remain honest roadmap work:
 - GPU/FPS/backend diagnostics remain future work.
 
 The v0.7.1 projection fix was checkpointed before diagnostics work. v0.8.0 inherits it but does not make it verified.
+
+## v0.8.0 first real diagnostic package — 2026-09-27
+User exported and supplied the first real v0.8.0 diagnostic ZIP after running the built-in `VIEWER_CORE` guided test.
+
+Observed package result:
+- app version 0.8.0 / build code 10;
+- guided test `VIEWER_CORE`: **PASS**;
+- `CORE_LOAD`: PASS using `test_object_binary.stl`;
+- `CORE_ORBIT`: PASS with objective camera delta;
+- `CORE_PAN_ZOOM`: PASS with objective multi-touch camera delta;
+- `CORE_FIT`: PASS;
+- `CORE_INFO`: PASS;
+- `CORE_SCREENSHOT`: PASS;
+- screenshot output verified non-empty at 3,022,988 bytes;
+- no ERROR events;
+- no WARNING events;
+- event sequence was continuous from 1 through 127;
+- the STL input was recognized as 60 vertices / 20 triangles with expected 40 x 30 x 20 source bounds.
+
+This proves that the core guided-test flow, structured event trace, result evidence, screenshot verification, package creation, and user export path are functioning on-device.
+
+Two diagnostic-system defects were found from the package itself:
+1. the exported `events.jsonl` ended at `EXPORT_REQUESTED` because `EXPORT_COMPLETED` was written only after the ZIP snapshot was created;
+2. completed `guided_test_results.json` retained stale `evidenceKeysForCurrentStep` even though no step was active.
+
+v0.8.0 diagnostic status: **PARTIAL USER VERIFICATION — CORE SUITE PASSED, EXPORT METADATA DEFECTS FOUND**.
+
+v0.8.1 corrective scope:
+- create a two-pass diagnostic export so the final ZIP contains a self-contained `export_result.json` and a trace including the persisted-export stage;
+- final export destination is rewritten and verified before success is returned;
+- partial destination is removed if finalization fails;
+- terminal guided-test states clear transient evidence;
+- `evidenceKeysForCurrentStep` includes only required evidence for an actually active step.
+
+No renderer/importer/viewer feature behavior is intentionally changed by v0.8.1.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
