@@ -19,7 +19,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE System-bar-safe phone layout.
 - DONE Compact five-button top and bottom control rows.
 - DONE Studio ambient/fill lighting presets.
-- DONE glTF animation play/pause and next animation.
+- DONE glTF animation play/pause and next animation — user-verified with a three-clip GLB fixture.
 - TODO Auto-rotate with adjustable speed/direction.
 - TODO Perspective / orthographic projection switch.
 - TODO Front/back/left/right/top/bottom/isometric named views.
@@ -29,7 +29,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE GLB.
 - PARTIAL glTF 2.0: embedded/data resources work; external sidecars need folder resolution.
 - DONE STL binary + ASCII; imported normals normalized/validated.
-- CANDIDATE v0.5.1 STL Android picker/Open-With MIME compatibility fix; device validation pending.
+- DONE v0.5.1 STL Android picker/Open-With MIME compatibility fix — user-verified.
 - PARTIAL OBJ: geometry works; MTL/materials/textures pending.
 - PARTIAL PLY: ASCII triangle meshes work; binary pending.
 - DONE OFF triangle/polygon meshes.
