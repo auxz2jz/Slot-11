@@ -150,17 +150,18 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 ## 11. Performance & robustness
 - DONE Balanced/Quality/Performance presets.
 - TODO Large-file progress indicator.
+- TODO Long-operation stall watchdog/timeouts where meaningful progress signals become available.
 - TODO Cancel import.
 - TODO Import memory budget.
 - TODO Progressive/deferred resource loading.
 - TODO LOD controls.
 - TODO FPS/frame-time diagnostics.
 - TODO GPU/backend diagnostics.
-- TODO Persistent structured diagnostic Action Trace with correlation IDs.
-- TODO Global crash/error preservation with recent-event context.
-- TODO Export Diagnostics ZIP with privacy/redaction.
-- TODO Guided **Test This Version** workflow with persistent progress and TXT/JSON reports.
-- TODO Crash-safe last-session recovery.
+- CANDIDATE v0.8.0 Persistent structured JSONL diagnostic sessions with request/operation correlation and bounded recent history; device validation pending.
+- CANDIDATE v0.8.0 Central error logging + global uncaught-crash preservation with prior event trail; device validation pending.
+- CANDIDATE v0.8.0 Explicit local Export Diagnostics ZIP with safe metadata/privacy controls; device validation pending.
+- CANDIDATE v0.8.0 Guided **Test This Version** workflow with evidence-gated PASS, visual confirmation, failure controls, persisted interrupted-step state, TXT/JSON results; device validation pending.
+- PARTIAL v0.8.0 Previous crash record/event trail is preserved for diagnostics; full user-state/session restoration remains TODO.
 - PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
 
 ## 12. Development safeguards
