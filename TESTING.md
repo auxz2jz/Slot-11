@@ -1,230 +1,156 @@
 # Android 3D Viewer Testing
 
-This file maps Slot-11 to the Master Instruction Library `GUIDED_TESTING_STANDARD.md`.
+This project follows the Master Instruction Library Guided Testing Standard plus the viewer-specific diagnostic/testing rules adopted by the user.
 
 ## Current status
 
-The project currently uses manual release checklists and candidate-specific plans.
+**v0.8.0 CANDIDATE adds a permanent in-app Test This Version framework.**
 
-Existing test documentation:
+Tests were created from this 3D viewer's real controls and workflows rather than copied from another application.
 
-- release checklist in `PROJECT_MEMORY.md`
-- v0.5.0 STEP/STP plan in `STEP_TEST_PLAN.md`
-- STEP fixture `test-fixtures/occt_screw.step`
+## Baseline and feature checkpoints
 
-There is currently no in-app **Test This Version** workflow. That is a documented future safeguard, not a reason to rewrite working source immediately.
-
-## Baseline and candidate under test
-
-### VERIFIED baseline
-
+Last fully regression-verified baseline:
 - Android v0.4.0
-- source commit `82accea784de4b31ebfc9af48be51bcaff6af229`
-- checkpoint branch `stable/v0.4.0-tested`
-- user-tested and confirmed working
+- source commit 82accea784de4b31ebfc9af48be51bcaff6af229
+- checkpoint stable/v0.4.0-tested
 
-### Current candidate
+Later feature-specific verification:
+- v0.5.1 STL picker/import behavior: user-verified
+- glTF/GLB Anim + Next: user-verified with a three-clip model
+- v0.6.0 Auto-rotate: user-verified
+- v0.7.0 Projection: failed device test
+- v0.7.1 Projection fix: built/checkpointed, device retest pending
+- v0.8.0 Diagnostics/guided testing: candidate, device validation required
 
-- Android v0.5.0 STEP/STP via OCCT
-- successful build source `5625660add9ee76d708ba90acf83e1729e0f493a`
-- feature branch `feature/occt-step-v0.5.0`
-- CI build succeeded
-- status: **CANDIDATE / UNTESTED ON USER DEVICE**
+Compilation success is never user verification.
 
-Compilation success must never be recorded as user verification.
+## Permanent guided-test architecture
 
-## Standard release regression test IDs
+Implemented components:
+- GuidedTestDefinition
+- GuidedTestStep
+- GuidedStepResult
+- GuidedTestController
 
-These stable IDs describe test intent. UI labels should use the actual visible app labels.
+Each step defines a stable ID, title, WHAT TO DO, EXPECTED result, required objective evidence, whether human visual confirmation is required, and an optional timeout field.
 
-### T-001 — Launch
-**WHAT TO DO:** Launch the app with no model selected.  
-**EXPECTED:** App opens without crashing and shows the viewer controls.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+Result states are PASS, FAIL, PARTIAL, BLOCKED, and NOT_RUN.
 
-### T-002 — File picker
-**WHAT TO DO:** Tap **Open**.  
-**EXPECTED:** Android Files picker opens and can return to the app.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+Starting a guided test starts a fresh diagnostic session. Meaningful test progress is persisted. Machine-readable output records the current step if interrupted.
 
-### T-003 — GLB load
-**WHAT TO DO:** Open a known-good GLB.  
-**EXPECTED:** Visible correctly shaded model appears; no fatal error.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+## False-positive protection
 
-### T-004 — STL load
-**WHAT TO DO:** Open a known-good STL.  
-**EXPECTED:** Geometry and shading appear correctly.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+A button press does not pass a test.
 
-### T-005 — 3MF multi-object load
-**WHAT TO DO:** Open a known-good multi-object 3MF.  
-**EXPECTED:** All parts appear in correct positions with valid geometry.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+Examples:
+- Open does not pass until a model is actually displayed.
+- Shot does not pass until a non-empty PNG is verified.
+- Auto-rotate does not pass until the camera actually moves.
+- Anim requires the playback state change plus tester confirmation of visible behavior.
+- Projection requires projection-state/touch evidence plus visual confirmation.
 
-### T-006 — Orbit/pan/zoom
-**WHAT TO DO:** Orbit with one finger, then pan/pinch zoom with two fingers.  
-**EXPECTED:** Camera responds without losing the model.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+If required objective evidence is missing, the UI refuses to mark the step PASS.
 
-### T-007 — Fit
-**WHAT TO DO:** Tap **Fit**.  
-**EXPECTED:** Model returns to usable framing.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+## In-app guided suites
 
-### T-008 — Rotation/configuration
-**WHAT TO DO:** Rotate the phone while a model is loaded.  
-**EXPECTED:** Viewer remains usable and model is not lost.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+### VIEWER_CORE
+1. CORE_LOAD — supported model actually displays
+2. CORE_ORBIT — one-finger gesture actually changes camera
+3. CORE_PAN_ZOOM — multi-touch gesture actually changes camera
+4. CORE_FIT — Fit state is applied and visually confirmed
+5. CORE_INFO — model information is actually populated/presented
+6. CORE_SCREENSHOT — non-empty PNG is actually saved
 
-### T-009 — Replace model
-**WHAT TO DO:** Open a second model.  
-**EXPECTED:** New model replaces the previous model cleanly.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+### DISPLAY_CONTROLS
+1. DISPLAY_QUALITY — Filament quality state changes
+2. DISPLAY_BACKGROUND — renderer background state changes
+3. DISPLAY_LIGHTING — light intensities are applied
+4. DISPLAY_SUN — sun intensity changes
+5. DISPLAY_AUTOROTATE — Auto-rotate produces an actual camera change
+6. DISPLAY_PROJECTION — projection changes and multi-touch navigation evidence occurs; tester confirms framing/appearance
 
-### T-010 — Invalid file handling
-**WHAT TO DO:** Attempt to open an invalid/unsupported model.  
-**EXPECTED:** Readable error; app remains running and can load a valid model afterward.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+### ANIMATION
+1. ANIM_LOAD — displayed model reports at least two animations
+2. ANIM_TOGGLE — playback state changes and tester confirms response
+3. ANIM_NEXT — active animation index changes and tester confirms clip
 
-### T-011 — Screenshot
-**WHAT TO DO:** Load a model and tap **Shot**.  
-**EXPECTED:** PNG is saved and app reports success.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+### FILE_WORKFLOW
+1. FILE_PICKER_LOAD — Android Files returns a supported file and the viewer displays it
+2. FILE_RECENT — a Recent selection is made and the model displays again
 
-### T-012 — Recent
-**WHAT TO DO:** Reopen a previously granted model through **Recent**.  
-**EXPECTED:** Model reloads when Android permission remains valid.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+## Guided-test controls
 
-### T-013 — Animation
-**WHAT TO DO:** Open the generated three-clip animated GLB, use **Anim** and **Next**.  
-**EXPECTED:** **Anim** pauses/resumes motion and **Next** cycles distinct embedded animation clips.  
-**Latest result:** **MANUAL_PASS — user verified 2026-09-26.**
+The v0.8.0 candidate exposes testing through Help:
 
-### T-014 — Auto-rotate / turntable
-**WHAT TO DO:** Load a static asymmetric model, open **Display**, enable Auto-rotate, change speed and direction, then touch-drag the model.
-**EXPECTED:** Model/camera orbits continuously; speed changes are obvious; direction reverses; manual touch safely stops auto-rotate so normal orbit/pan/zoom remains usable.
-**Latest result:** **MANUAL_PASS — user verified 2026-09-27.**
+- Test This Version
+- Do Step
+- Looks Correct / Verify Result
+- Expected Behavior Failed
+- Blocked
+- Cancel Test
+- Export Test + Diagnostics
 
-### T-015 — Perspective / Orthographic projection
-**WHAT TO DO:** Load the asymmetric test model, open **Display**, switch Projection between Perspective and Orthographic, then orbit/pan/pinch zoom in both modes.
-**EXPECTED:** Perspective shows normal depth convergence; Orthographic removes perspective foreshortening while keeping the model framed. Orbit/pan/pinch zoom remain usable. Switching back to Perspective restores the normal camera projection.
-**v0.7.0 result:** **MANUAL_FAIL — 2026-09-27.** Mode switching/orbit/pan/Fit worked, but Orthographic framed far too tightly and pinch zoom had no visible effect.
-**Retest target:** v0.7.1 after depth-to-model-center projection fix.
+During an active test, Help becomes the step-review entry point.
 
-## v0.5.0 STEP/STP candidate tests
+## Machine-readable results
 
-`STEP_TEST_PLAN.md` remains the detailed STEP-specific plan.
+guided_test_results.json includes test ID, diagnostic session ID, overall status, completed/in-progress state, current step if interrupted, step results, durations, messages, and measured evidence values.
 
-Stable test IDs:
+guided_test_results.txt is the human-readable counterpart.
 
-- `T-STEP-001` file picker accepts `.step`
-- `T-STEP-002` pinned OCCT screw STEP loads visibly
-- `T-STEP-003` Info reports non-zero geometry
-- `T-STEP-004` orbit/pan/zoom/Fit work after STEP import
-- `T-STEP-005` screenshot works after STEP import
-- `T-STEP-006` another model can replace STEP cleanly
-- `T-STEP-007` `.stp` extension uses same importer
-- `T-STEP-008` Android Open With works for STEP/STP
-- `T-STEP-009` invalid STEP fails safely
-- `T-STEP-010` at least one user-generated STEP/STP loads successfully
+## Historical release regression IDs
 
-The candidate must also pass T-001 through T-013 where applicable before merge to the verified line.
+The existing manual IDs remain useful:
+- T-001 Launch
+- T-002 File picker
+- T-003 GLB load
+- T-004 STL load
+- T-005 3MF multi-object
+- T-006 Orbit/pan/zoom
+- T-007 Fit
+- T-008 device rotation/configuration
+- T-009 replace model
+- T-010 invalid file handling
+- T-011 screenshot
+- T-012 Recent
+- T-013 animation
+- T-014 Auto-rotate
+- T-015 Perspective / Orthographic projection
 
-## Manual failure control
+Known results:
+- T-013 manual PASS
+- T-014 manual PASS
+- T-015 v0.7.0 manual FAIL
+- T-015 v0.7.1 retest pending
 
-Until an in-app guided test exists, the user can report a problem in chat or provide screenshots/files.
+## STEP/STP tests
 
-Record a manual failure with:
+STEP_TEST_PLAN.md remains the detailed plan:
+- T-STEP-001 picker accepts .step
+- T-STEP-002 pinned OCCT screw loads visibly
+- T-STEP-003 Info reports non-zero geometry
+- T-STEP-004 orbit/pan/zoom/Fit work
+- T-STEP-005 screenshot works
+- T-STEP-006 another model replaces STEP
+- T-STEP-007 .stp uses same importer
+- T-STEP-008 Open With works
+- T-STEP-009 invalid STEP fails safely
+- T-STEP-010 a user-generated STEP/STP loads
 
-- test ID/step
-- app version/build
-- what was tapped
-- expected behavior
-- actual behavior
-- model/file type
-- whether the app crashed
-- any diagnostic package or screenshot supplied
+STEP gray rendering is not currently a geometry failure; color metadata preservation remains a separate feature gap.
 
-Do not mark the test PASS because a button was pressed or because CI built the APK.
+## Every future feature
 
-## Future in-app Test This Version
+Every important future user-facing or background feature must add/update:
+- user-action logging when applicable
+- software-request event
+- relevant state transition
+- actual result verification
+- error logging
+- guided test or regression step
+- PASS conditions
+- FAIL conditions
+- diagnostic-export relevance
 
-Implement incrementally after the current STEP candidate is validated.
-
-The eventual in-app workflow should persist:
-
-- test session ID
-- test definition/version
-- app version/build
-- start/end time
-- current/completed step
-- result source
-- automatic evidence
-- tester notes
-- first failed step
-- overall result
-
-Each step should include:
-
-- stable step ID
-- WHAT TO DO
-- EXPECTED RESULT
-- automatic verification when practical
-- PASS/FAIL criteria
-- timeout when appropriate
-- evidence to collect
-- diagnostic export instructions
-
-Result-source values should include:
-
-- AUTO_VERIFIED
-- AUTO_FAIL
-- MANUAL_PASS
-- MANUAL_FAIL
-- MANUAL_OVERRIDE
-- BLOCKED
-- SKIPPED
-- UNTESTED
-
-## Test reports
-
-Future guided testing should export both:
-
-- human-readable TXT
-- structured JSON
-
-Failed tests should link to the relevant diagnostic session/event IDs.
-
-## Feature completion rule
-
-Every new user-facing feature must define its test before being marked DONE.
-
-A feature is:
-
-- IMPLEMENTED/CANDIDATE when code exists and builds;
-- VERIFIED only after required testing succeeds, including user visual confirmation where needed.
-
-Raw chronological diagnostics override a false-positive summary.
-
-## Supported-format corpus test
-Use the generated `Android3DViewer_Supported_Format_Test_Pack.zip` and `FORMAT_TEST_CORPUS.md`.
-
-Recommended order:
-1. binary STL
-2. ASCII STL
-3. GLB
-4. embedded glTF
-5. OBJ
-6. 3MF
-7. AMF
-8. X3D
-9. ASCII PLY
-10. OFF
-11. STEP
-12. STP
-
-For every failure, record the exact filename, whether the file appeared in Android Files, whether selection returned to the app, and the exact error dialog/status text.
-
-STEP gray rendering is not itself a geometry-test failure in v0.5.x; color metadata preservation is currently a separate TODO.
+A feature is CANDIDATE when implemented/buildable and VERIFIED only after required testing succeeds.
