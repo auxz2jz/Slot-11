@@ -21,7 +21,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE Studio ambient/fill lighting presets.
 - DONE glTF animation play/pause and next animation — user-verified with a three-clip GLB fixture.
 - DONE v0.6.0 Auto-rotate / turntable with Slow/Normal/Fast speed and Left/Right direction — user-verified.
-- CANDIDATE v0.7.0 Perspective / Orthographic projection switch; device validation pending.
+- CANDIDATE v0.7.1 Perspective / Orthographic projection switch with corrected orthographic framing/zoom; device retest pending.
 - TODO Front/back/left/right/top/bottom/isometric named views.
 - TODO Save/restore camera bookmarks.
 
