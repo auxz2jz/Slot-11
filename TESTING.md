@@ -98,9 +98,14 @@ These stable IDs describe test intent. UI labels should use the actual visible a
 **Result source today:** MANUAL_PASS / MANUAL_FAIL.
 
 ### T-013 — Animation
-**WHAT TO DO:** Open an animated GLB, use **Anim** and **Next**.  
-**EXPECTED:** Animation controls affect actual playback/selection.  
-**Result source today:** MANUAL_PASS / MANUAL_FAIL.
+**WHAT TO DO:** Open the generated three-clip animated GLB, use **Anim** and **Next**.  
+**EXPECTED:** **Anim** pauses/resumes motion and **Next** cycles distinct embedded animation clips.  
+**Latest result:** **MANUAL_PASS — user verified 2026-09-26.**
+
+### T-014 — Auto-rotate / turntable
+**WHAT TO DO:** Load a static asymmetric model, open **Display**, enable Auto-rotate, change speed and direction, then touch-drag the model.
+**EXPECTED:** Model/camera orbits continuously; speed changes are obvious; direction reverses; manual touch safely stops auto-rotate so normal orbit/pan/zoom remains usable.
+**Result source:** UNTESTED until v0.6.0 device test.
 
 ## v0.5.0 STEP/STP candidate tests
 
