@@ -29,6 +29,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE GLB.
 - PARTIAL glTF 2.0: embedded/data resources work; external sidecars need folder resolution.
 - DONE STL binary + ASCII; imported normals normalized/validated.
+- CANDIDATE v0.5.1 STL Android picker/Open-With MIME compatibility fix; device validation pending.
 - PARTIAL OBJ: geometry works; MTL/materials/textures pending.
 - PARTIAL PLY: ASCII triangle meshes work; binary pending.
 - DONE OFF triangle/polygon meshes.
@@ -38,7 +39,8 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - TODO FBX (likely Assimp-backed importer).
 - TODO Collada DAE.
 - TODO USD / USDA / USDC / USDZ investigation.
-- PARTIAL STEP / STP: OCCT 8.0.1 Android/JNI tessellation bridge is on the v0.5.0 feature branch; CI build + device validation required before DONE.
+- PARTIAL STEP / STP: OCCT 8.0.1 Android/JNI tessellation bridge builds successfully; device validation is in progress.
+- TODO STEP/STP color/material metadata preservation via an XCAF/STEPCAF-style path after geometry import is verified.
 - TODO IGES / IGS through the same OCCT native bridge after STEP validation.
 - TODO VRML/WRL.
 - PARTIAL X3D: common IndexedFaceSet / IndexedTriangleSet / TriangleSet geometry and basic transforms work; advanced X3D scene features pending.
