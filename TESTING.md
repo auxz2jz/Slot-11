@@ -110,7 +110,8 @@ These stable IDs describe test intent. UI labels should use the actual visible a
 ### T-015 — Perspective / Orthographic projection
 **WHAT TO DO:** Load the asymmetric test model, open **Display**, switch Projection between Perspective and Orthographic, then orbit/pan/pinch zoom in both modes.
 **EXPECTED:** Perspective shows normal depth convergence; Orthographic removes perspective foreshortening while keeping the model framed. Orbit/pan/pinch zoom remain usable. Switching back to Perspective restores the normal camera projection.
-**Result source:** UNTESTED until v0.7.0 device test.
+**v0.7.0 result:** **MANUAL_FAIL — 2026-09-27.** Mode switching/orbit/pan/Fit worked, but Orthographic framed far too tightly and pinch zoom had no visible effect.
+**Retest target:** v0.7.1 after depth-to-model-center projection fix.
 
 ## v0.5.0 STEP/STP candidate tests
 
