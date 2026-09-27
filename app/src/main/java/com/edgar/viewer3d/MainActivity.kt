@@ -218,11 +218,10 @@ class MainActivity : Activity() {
     private fun openFile() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
+            // Do not restrict Android's document picker by MIME type here.
+            // Providers disagree on MIME labels for formats such as STL.
+            // The app validates the selected file by extension and parser after selection.
             type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
-                "model/gltf-binary", "model/gltf+json", "model/stl", "model/obj",
-                "model/3mf", "model/step", "application/step", "model/x3d+xml", "application/xml", "text/xml", "application/sla", "application/octet-stream", "text/plain"
-            ))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         startActivityForResult(i, OPEN_REQUEST)
