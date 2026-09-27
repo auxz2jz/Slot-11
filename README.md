@@ -56,3 +56,6 @@ Before substantial work:
 
 ## Development rule
 A successful build is a **CANDIDATE**, not a VERIFIED release. Keep the exact v0.4.0 verified source intact until a newer candidate is physically tested and confirmed by the user.
+
+## v0.8.0 diagnostic candidate
+The diagnostics branch adds program-specific structured diagnostics, Help -> Test This Version, and explicit local Export Diagnostics. Diagnostics remain local until the user exports them; source 3D model contents are not included automatically. A build is still only a CANDIDATE until device testing succeeds.
