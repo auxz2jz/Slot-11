@@ -7,8 +7,14 @@
 - Last device-tested stable version on `main`: **v0.4.0** (`82accea784de4b31ebfc9af48be51bcaff6af229`)
 - Permanent tested checkpoint branch: `stable/v0.4.0-tested`
 - Current feature branch under development: **v0.5.0 STEP/STP via OCCT** (`feature/occt-step-v0.5.0`)
-- This file is the first source of truth for future work.
-- Read this file before making changes. Then read `3D_VIEWER_ROADMAP.md`.
+- Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
+- Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
+- Successful v0.5.0 GitHub Actions run: `36184091026`
+- v0.5.0 APK artifact ID: `10886586045`
+- v0.5.0 artifact ZIP SHA-256: `b9bec51841664ec009c86c303054a7c44bbb9d2a32297b6c4aa050f06eb6244d`
+- v0.5.0 extracted APK SHA-256: `c4187753d08fd49311c0db74c7bcd8666a84102e88e92b205be19c77b8ad8ea8`
+- This file is the Android project memory/checkpoint source of truth.
+- Master Library startup order: read `auxz2jz/master-instruction-library/INSTRUCTION_INDEX.md` and mandatory files, then `MASTER_RULE_ADOPTION.md`, `CROSS_PLATFORM_COORDINATION.md`, this file, `3D_VIEWER_ROADMAP.md`, `TESTING.md`, and `DIAGNOSTICS.md` before substantial source work.
 
 ## Product goal
 Build a phone-friendly but progressively professional 3D model viewer that can open common mesh/model files directly on Android and grow toward CAD-style inspection tools.
@@ -87,8 +93,26 @@ Additional v0.4.0 work:
 - Recovery fix: use the explicit installed include directory `app/occt/arm64-v8a/include/opencascade` and verify `STEPControl_Reader.hxx` with `EXISTS`, avoiding NDK root-path interference.
 - CI rule for native dependencies: build/cache/upload OCCT in a dedicated job first; the Android APK job downloads that completed artifact. A later bridge/compiler failure must not force another OCCT rebuild.
 - STEP regression fixture: `test-fixtures/occt_screw.step`, pinned from OCCT `V8.0.1` `data/step/screw.step`; use it as the first known-good STEP device test before testing larger/user CAD files.
-- Do not merge v0.5.0 into `main` until the feature-branch APK compiles successfully and STEP/STP is tested on-device.
+- v0.5.0 CI compilation/package verification succeeded on run `36184091026`.
+- Do not merge v0.5.0 into the verified line until STEP/STP and the v0.4.0 regression set are tested on-device.
 - Do not poll the same long-running workflow repeatedly. Inspect the final job result/log once it completes; if it fails, fix the exact reported failure before starting another run.
+
+## Master Instruction Library adoption
+- Adopted current canonical library: `auxz2jz/master-instruction-library` on 2026-09-26.
+- Mapping record: `MASTER_RULE_ADOPTION.md`.
+- Shared multi-agent/platform coordination: `CROSS_PLATFORM_COORDINATION.md`.
+- Android diagnostic gaps/implementation order: `DIAGNOSTICS.md`.
+- Android release/guided testing mapping: `TESTING.md`.
+- No source reorganization or structural migration was performed for adoption.
+- Existing Android source/build layout remains authoritative.
+- Windows/PC implementation status: **NOT STARTED**; future Windows work must use an isolated ownership area and separate baseline/candidate records.
+
+## Current task and exact next action
+Current task: adopt the Master Instruction Library without changing verified behavior.
+
+Adoption documentation is complete. No Android source was changed by the adoption itself.
+
+**Exact next development/test action:** install and device-test the already-built v0.5.0 STEP/STP candidate using `TESTING.md` and `STEP_TEST_PLAN.md`. Keep v0.4.0 as VERIFIED until those tests pass.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
