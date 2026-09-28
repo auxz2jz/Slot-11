@@ -142,9 +142,13 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "DISPLAY_AUTOROTATE",
                     title = "Auto-rotate",
-                    instruction = "Start Auto-rotate and let it move the model.",
-                    expected = "Auto-rotate enters the enabled state and produces an actual camera change.",
-                    requiredEvidence = listOf("AUTO_ROTATE_CAMERA_CHANGED"),
+                    instruction = "Start Auto-rotate, change its speed once, reverse direction once, and let it move the model.",
+                    expected = "The camera actually moves, the speed state changes, and the direction state reverses.",
+                    requiredEvidence = listOf(
+                        "AUTO_ROTATE_CAMERA_CHANGED",
+                        "AUTO_ROTATE_SPEED_CHANGED",
+                        "AUTO_ROTATE_DIRECTION_CHANGED"
+                    ),
                     visualConfirmationRequired = true
                 ),
                 GuidedTestStep(
@@ -185,6 +189,172 @@ object GuidedTestController {
                     expected = "The active animation index changes to another valid clip.",
                     requiredEvidence = listOf("ANIMATION_INDEX_CHANGED"),
                     visualConfirmationRequired = true
+                )
+            )
+        ),
+        "FORMAT_IMPORTS" to GuidedTestDefinition(
+            id = "FORMAT_IMPORTS",
+            title = "Supported format imports",
+            description = "Regression test for each currently supported importer using the generated format test pack.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "FORMAT_GLB",
+                    title = "GLB",
+                    instruction = "Open test_object.glb from the supported-format test pack.",
+                    expected = "The GLB is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_GLB"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_GLTF",
+                    title = "Embedded glTF",
+                    instruction = "Open test_object.gltf.",
+                    expected = "The embedded-resource glTF is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_GLTF"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_STL_BINARY",
+                    title = "Binary STL",
+                    instruction = "Open test_object_binary.stl.",
+                    expected = "The binary STL parser path is used and the model is displayed.",
+                    requiredEvidence = listOf(
+                        "STL_BINARY_PARSED",
+                        "MODEL_DISPLAYED_STL"
+                    ),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_STL_ASCII",
+                    title = "ASCII STL",
+                    instruction = "Open test_object_ascii.stl.",
+                    expected = "The ASCII STL parser path is used and the model is displayed.",
+                    requiredEvidence = listOf(
+                        "STL_ASCII_PARSED",
+                        "MODEL_DISPLAYED_STL"
+                    ),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_OBJ",
+                    title = "OBJ",
+                    instruction = "Open test_object.obj.",
+                    expected = "OBJ geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_OBJ"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_3MF",
+                    title = "3MF",
+                    instruction = "Open test_object.3mf.",
+                    expected = "3MF geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_3MF"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_AMF",
+                    title = "AMF",
+                    instruction = "Open test_object.amf.",
+                    expected = "AMF geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_AMF"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_X3D",
+                    title = "X3D",
+                    instruction = "Open test_object.x3d.",
+                    expected = "X3D geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_X3D"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_PLY",
+                    title = "ASCII PLY",
+                    instruction = "Open test_object.ply.",
+                    expected = "ASCII PLY geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_PLY"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_OFF",
+                    title = "OFF",
+                    instruction = "Open test_object.off.",
+                    expected = "OFF geometry is actually displayed.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_OFF"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_STEP",
+                    title = "STEP",
+                    instruction = "Open test_object.step.",
+                    expected = "OCCT imports and displays non-empty STEP geometry.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_STEP"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "FORMAT_STP",
+                    title = "STP",
+                    instruction = "Open test_object.stp.",
+                    expected = "OCCT imports and displays non-empty STP geometry through the same CAD path.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED_STP"),
+                    visualConfirmationRequired = true
+                )
+            )
+        ),
+        "ROBUSTNESS" to GuidedTestDefinition(
+            id = "ROBUSTNESS",
+            title = "Robustness / recovery",
+            description = "Model replacement, invalid-file failure handling, recovery and Open With.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "ROBUST_REPLACE",
+                    title = "Replace the current model",
+                    instruction = "With one model already open, use Open to load a different supported model.",
+                    expected = "The new model replaces the previous model and displays normally.",
+                    requiredEvidence = listOf("MODEL_REPLACED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "ROBUST_INVALID",
+                    title = "Invalid supported file",
+                    instruction = "Select a deliberately invalid file that has a supported model extension.",
+                    expected = "A readable load error is shown without crashing the app.",
+                    requiredEvidence = listOf("MODEL_LOAD_FAILED_SAFELY"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "ROBUST_RECOVER",
+                    title = "Recover after failure",
+                    instruction = "After the invalid-file error, open a known-good supported model.",
+                    expected = "The valid model displays successfully and the viewer remains usable.",
+                    requiredEvidence = listOf("MODEL_DISPLAYED"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "ROBUST_OPEN_WITH",
+                    title = "Android Open With",
+                    instruction = "From Android Files, use Open With to send a supported model to 3D Viewer.",
+                    expected = "The app receives the external open request and displays the model.",
+                    requiredEvidence = listOf(
+                        "OPEN_WITH_RECEIVED",
+                        "MODEL_DISPLAYED"
+                    ),
+                    visualConfirmationRequired = true
+                )
+            )
+        ),
+        "DIAGNOSTIC_SYSTEM" to GuidedTestDefinition(
+            id = "DIAGNOSTIC_SYSTEM",
+            title = "Diagnostics / export",
+            description = "Checks that the diagnostic package can be created and saved.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "DIAG_EXPORT",
+                    title = "Export Diagnostics",
+                    instruction = "Tap Test, choose Export Diagnostics, wait for the saved-location confirmation, then tap Test again.",
+                    expected = "A non-empty diagnostic ZIP is successfully written to the local Downloads diagnostic folder.",
+                    requiredEvidence = listOf("DIAGNOSTIC_EXPORT_COMPLETED"),
+                    visualConfirmationRequired = false
                 )
             )
         ),
