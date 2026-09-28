@@ -108,6 +108,7 @@ class MainActivity : Activity() {
         buildUi()
         cameraManipulator = Manipulator.Builder()
             .targetPosition(0f, 0f, -4f)
+            .orbitSpeed(0.01f, 0.01f)
             .viewport(surface.width.coerceAtLeast(1), surface.height.coerceAtLeast(1))
             .build(Manipulator.Mode.ORBIT)
         viewer = ModelViewer(surface, manipulator = cameraManipulator)
@@ -1013,7 +1014,8 @@ class MainActivity : Activity() {
             if (autoRotateEnabled) "Auto-rotate: Stop" else "Auto-rotate: Start",
             "Auto-rotate speed: ${autoRotateSpeedName()}",
             "Auto-rotate direction: ${autoRotateDirectionName()}",
-            "Projection: ${if (orthographicProjection) "Orthographic" else "Perspective"}"
+            "Projection: ${if (orthographicProjection) "Orthographic" else "Perspective"}",
+            "Named views..."
         )
         AlertDialog.Builder(this).setTitle("Display").setItems(options) { _, which ->
             val selectedLabel = options.getOrNull(which) ?: "unknown"
@@ -1065,8 +1067,232 @@ class MainActivity : Activity() {
                     toast("Auto-rotate direction: " + newDirection)
                 }
                 12 -> setOrthographicProjection(!orthographicProjection)
+                13 -> showNamedViews()
             }
         }.show()
+    }
+
+    private fun showNamedViews() {
+        if (viewer.asset == null) {
+            DiagnosticLogger.warning(
+                "NAMED_VIEW_MENU_IGNORED",
+                mapOf("reason" to "no_model")
+            )
+            toast("Open a model before choosing a named view.")
+            return
+        }
+
+        val names = arrayOf(
+            "Front",
+            "Back",
+            "Left",
+            "Right",
+            "Top",
+            "Bottom",
+            "Isometric"
+        )
+
+        DiagnosticLogger.event(
+            "NAVIGATION",
+            "NAMED_VIEW_MENU_PRESENTED",
+            mapOf("viewCount" to names.size)
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Named views")
+            .setItems(names) { _, which ->
+                applyNamedView(names[which])
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyNamedView(name: String) {
+        if (viewer.asset == null) {
+            toast("Open a model first.")
+            return
+        }
+
+        val key = name.uppercase(Locale.US)
+        val radiansPerPixel = 0.01
+        val maxVertical =
+            Math.PI / 2.0 - 0.01
+
+        val theta: Double
+        val phi: Double
+        val expectedX: Double
+        val expectedY: Double
+        val expectedZ: Double
+
+        when (key) {
+            "FRONT" -> {
+                theta = 0.0
+                phi = 0.0
+                expectedX = 0.0
+                expectedY = 0.0
+                expectedZ = 1.0
+            }
+            "BACK" -> {
+                theta = Math.PI
+                phi = 0.0
+                expectedX = 0.0
+                expectedY = 0.0
+                expectedZ = -1.0
+            }
+            "LEFT" -> {
+                theta = -Math.PI / 2.0
+                phi = 0.0
+                expectedX = -1.0
+                expectedY = 0.0
+                expectedZ = 0.0
+            }
+            "RIGHT" -> {
+                theta = Math.PI / 2.0
+                phi = 0.0
+                expectedX = 1.0
+                expectedY = 0.0
+                expectedZ = 0.0
+            }
+            "TOP" -> {
+                theta = 0.0
+                phi = maxVertical
+                expectedX = 0.0
+                expectedY = 1.0
+                expectedZ = 0.0
+            }
+            "BOTTOM" -> {
+                theta = 0.0
+                phi = -maxVertical
+                expectedX = 0.0
+                expectedY = -1.0
+                expectedZ = 0.0
+            }
+            else -> {
+                theta = Math.PI / 4.0
+                phi = kotlin.math.atan(1.0 / kotlin.math.sqrt(2.0))
+                val cosPhi = kotlin.math.cos(phi)
+                expectedX = kotlin.math.sin(theta) * cosPhi
+                expectedY = kotlin.math.sin(phi)
+                expectedZ = kotlin.math.cos(theta) * cosPhi
+            }
+        }
+
+        val operationId = DiagnosticLogger.newId("named_view")
+        DiagnosticLogger.event(
+            "STATE",
+            "NAMED_VIEW_REQUESTED",
+            mapOf(
+                "view" to name,
+                "projection" to if (orthographicProjection) {
+                    "Orthographic"
+                } else {
+                    "Perspective"
+                }
+            ),
+            operationId = operationId
+        )
+
+        stopAutoRotate(
+            showToast = false,
+            reason = "named_view"
+        )
+        viewer.resetToDefaultState()
+
+        val centerX = surface.width.coerceAtLeast(1) / 2
+        val centerY = surface.height.coerceAtLeast(1) / 2
+
+        if (theta != 0.0 || phi != 0.0) {
+            val targetX = centerX -
+                kotlin.math.round(theta / radiansPerPixel).toInt()
+            val targetY = centerY -
+                kotlin.math.round(phi / radiansPerPixel).toInt()
+
+            cameraManipulator.grabBegin(
+                centerX,
+                centerY,
+                false
+            )
+            cameraManipulator.grabUpdate(
+                targetX,
+                targetY
+            )
+            cameraManipulator.grabEnd()
+        }
+
+        cameraManipulator.getLookAt(
+            projectionEye,
+            projectionTarget,
+            projectionUp
+        )
+
+        val centerWorldX = 0.0
+        val centerWorldY = 0.0
+        val centerWorldZ = -4.0
+        val viewX = projectionEye[0] - centerWorldX
+        val viewY = projectionEye[1] - centerWorldY
+        val viewZ = projectionEye[2] - centerWorldZ
+        val viewLength = kotlin.math.sqrt(
+            viewX * viewX +
+                viewY * viewY +
+                viewZ * viewZ
+        ).coerceAtLeast(0.0001)
+
+        val actualX = viewX / viewLength
+        val actualY = viewY / viewLength
+        val actualZ = viewZ / viewLength
+        val directionDot =
+            actualX * expectedX +
+                actualY * expectedY +
+                actualZ * expectedZ
+
+        if (orthographicProjection) {
+            updateProjectionForFrame()
+        }
+
+        val verified = directionDot >= 0.97
+        DiagnosticLogger.event(
+            "STATE",
+            "NAMED_VIEW_APPLIED",
+            mapOf(
+                "view" to name,
+                "directionDot" to directionDot,
+                "verifiedDirection" to verified,
+                "eyeX" to projectionEye[0],
+                "eyeY" to projectionEye[1],
+                "eyeZ" to projectionEye[2],
+                "projection" to if (orthographicProjection) {
+                    "Orthographic"
+                } else {
+                    "Perspective"
+                }
+            ),
+            operationId = operationId
+        )
+
+        if (verified) {
+            GuidedTestController.recordEvidence(
+                "NAMED_VIEW_" + key,
+                mapOf(
+                    "directionDot" to directionDot,
+                    "projection" to if (orthographicProjection) {
+                        "Orthographic"
+                    } else {
+                        "Perspective"
+                    }
+                )
+            )
+            toast(name + " view")
+        } else {
+            DiagnosticLogger.warning(
+                "NAMED_VIEW_DIRECTION_MISMATCH",
+                mapOf(
+                    "view" to name,
+                    "directionDot" to directionDot
+                ),
+                operationId = operationId
+            )
+            toast(name + " view applied, but direction verification failed.")
+        }
     }
 
     private fun setOrthographicProjection(enabled: Boolean) {
@@ -1678,6 +1904,8 @@ class MainActivity : Activity() {
             Slow/Normal/Fast speed and Left/Right direction.
             Touching the model stops Auto-rotate.
             Projection: Perspective or true Orthographic viewing.
+            Display → Named views: Front, Back, Left, Right, Top,
+            Bottom and Isometric.
 
             TESTING
             Test: opens the Testing Center directly.
