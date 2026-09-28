@@ -22,7 +22,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE glTF animation play/pause and next animation — user-verified with a three-clip GLB fixture.
 - DONE v0.6.0 Auto-rotate / turntable with Slow/Normal/Fast speed and Left/Right direction — user-verified.
 - CANDIDATE v0.7.1 Perspective / Orthographic projection switch with corrected orthographic framing/zoom; device retest pending.
-- TODO Front/back/left/right/top/bottom/isometric named views.
+- CANDIDATE v0.9.0 Front/Back/Left/Right/Top/Bottom/Isometric named views with direction verification and a seven-step guided test; device validation pending.
 - TODO Save/restore camera bookmarks.
 
 ## 2. File formats
