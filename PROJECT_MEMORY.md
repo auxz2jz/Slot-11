@@ -10,7 +10,8 @@
 - Last tested feature checkpoint: **v0.6.0 auto-rotate / turntable** (`candidate/v0.6.0-auto-rotate-tested`)
 - Projection-fix checkpoint: **v0.7.1 Perspective / Orthographic** (`candidate/v0.7.1-projection-fix-untested`)
 - Archived diagnostic candidate: **v0.8.0** (`archive/v0.8.0-diagnostics-export-defects`)
-- Current development branch: **v0.8.1 diagnostics export/result fix** (`feature/diagnostics-v0.8.1`)
+- Diagnostic export checkpoint: **v0.8.1** (`candidate/v0.8.1-diagnostic-export-fix`)
+- Current development branch: **v0.8.2 testing UI + coverage** (`feature/testing-ui-v0.8.2`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -352,6 +353,27 @@ v0.8.1 corrective scope:
 - `evidenceKeysForCurrentStep` includes only required evidence for an actually active step.
 
 No renderer/importer/viewer feature behavior is intentionally changed by v0.8.1.
+
+## v0.8.2 testing access and coverage plan
+User feedback from first guided-test use:
+- Test This Version is too hidden inside Help;
+- access can feel obstructed by the viewer's on-screen controls;
+- long Help/test dialogs do not scroll comfortably;
+- every important existing/new feature must have an associated test rather than only the original four guided suites.
+
+v0.8.2 scope:
+- make **Test** a permanent bottom-row button;
+- move Help and Export Diagnostics into a compact Testing Center so Test is one tap away;
+- active tests use the same Test button as the direct review/check-result entry point;
+- make long instruction/review/help content use explicit ScrollView-backed dialog content;
+- make the test-selection list compact and easier to scroll;
+- expand guided coverage for supported file-format importers and robustness workflows;
+- add parser-specific diagnostic evidence for binary vs ASCII STL so those two parser paths can be tested independently;
+- preserve existing viewer controls/features; Help is relocated, not removed;
+- do not start the named-view feature until this testing-access candidate compiles cleanly.
+
+Future rule:
+Every important new feature must ship with its diagnostic events and a guided/regression test in the same feature version. A feature cannot move from CANDIDATE to VERIFIED without its defined test.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
