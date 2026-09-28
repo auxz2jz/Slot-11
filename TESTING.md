@@ -23,7 +23,9 @@ Later feature-specific verification:
 - v0.7.1 Projection fix: built/checkpointed, device retest pending
 - v0.8.0 Diagnostics/guided testing: VIEWER_CORE user run PASS; export-result metadata defects found
 - v0.8.1 Diagnostics export/result fix: checkpointed; build/device validation pending
-- v0.8.2 Testing UI + coverage: candidate; direct Test access and expanded guided suites
+- v0.8.2 Testing UI + coverage: user exercised major suites; diagnostic-export navigation defect found
+- v0.8.3 Guided-test progress/export correction: user reports working; checkpointed
+- v0.9.0 Named camera views: candidate; device validation pending
 
 Compilation success is never user verification.
 
@@ -203,12 +205,26 @@ Supplied diagnostic packages show:
 
 The DIAGNOSTIC_SYSTEM failure is a test-navigation false block, not an exporter failure. The package generated immediately afterward contains export_result.json with status COMPLETED.
 
-### v0.8.3 retest
-1. Start Diagnostics / export.
-2. Tap Test.
-3. Confirm the Active Test menu exposes Export Diagnostics.
-4. Choose Export Diagnostics.
-5. Confirm a non-empty ZIP is saved.
-6. Confirm the app automatically presents the current step review after export completes.
-7. Verify Result must PASS only after DIAGNOSTIC_EXPORT_COMPLETED evidence is present.
-8. Export the completed test diagnostics and confirm no loop occurs.
+### v0.8.3 corrected flow
+The user confirmed the corrected test flow works.
+
+- Test continues to return directly to the current active step review; there is no repeated test-selection process.
+- The active test and step remain in progress until PASS/FAIL/BLOCKED/CANCEL.
+- After PASS, the controller advances to the next step automatically.
+- For DIAGNOSTIC_SYSTEM only, the step's Do Step button launches Export Diagnostics directly.
+- After a successful export, DIAGNOSTIC_EXPORT_COMPLETED evidence is recorded and the same step review opens automatically.
+- The export test can therefore complete without trapping the user in a navigation loop.
+
+### NAMED_VIEWS
+v0.9.0 adds a dedicated seven-step guided suite:
+1. VIEW_FRONT
+2. VIEW_BACK
+3. VIEW_LEFT
+4. VIEW_RIGHT
+5. VIEW_TOP
+6. VIEW_BOTTOM
+7. VIEW_ISOMETRIC
+
+Each step requires objective camera-direction evidence (dot product >= 0.97) plus tester visual confirmation. A button press alone cannot pass the step.
+
+The FORMAT_IMPORTS and ANIMATION instructions now use the distinct-object test pack so every format visibly changes to a different object.
