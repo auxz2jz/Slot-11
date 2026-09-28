@@ -311,7 +311,7 @@ class MainActivity : Activity() {
         addButton(bottom, "Display") { showDisplayOptions() }
         addButton(bottom, "Test") {
             if (GuidedTestController.isActive()) {
-                showActiveTestMenu()
+                showGuidedStepReview()
             } else {
                 showTestingCenter()
             }
@@ -1622,51 +1622,6 @@ class MainActivity : Activity() {
             .show()
     }
 
-    private fun showActiveTestMenu() {
-        val test = GuidedTestController.activeTest()
-        val step = GuidedTestController.currentStep()
-        if (test == null || step == null) {
-            showTestingCenter()
-            return
-        }
-
-        DiagnosticLogger.event(
-            "NAVIGATION",
-            "ACTIVE_TEST_MENU_PRESENTED",
-            mapOf(
-                "testId" to test.id,
-                "stepId" to step.id
-            )
-        )
-
-        val options = arrayOf(
-            "Review Current Step",
-            "Show Step Instructions",
-            "Export Diagnostics",
-            "Help / Controls",
-            "Cancel Test"
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("Active Test: " + test.title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showGuidedStepReview()
-                    1 -> showGuidedStepInstruction()
-                    2 -> exportDiagnostics()
-                    3 -> showHelp()
-                    4 -> {
-                        GuidedTestController.cancel(
-                            "Test cancelled from the Active Test menu."
-                        )
-                        showGuidedTestFinished()
-                    }
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
     private fun showTestingCenter() {
         DiagnosticLogger.event(
             "NAVIGATION",
@@ -1726,9 +1681,8 @@ class MainActivity : Activity() {
 
             TESTING
             Test: opens the Testing Center directly.
-            During a guided test, Test opens an Active Test menu.
-            That menu always provides Review Current Step, instructions,
-            Export Diagnostics, Help and Cancel Test.
+            During a guided test, Test returns directly to the current
+            step review so your place is preserved.
             Export Diagnostics creates a local ZIP in
             Downloads/3DViewerDiagnostics.
             Diagnostics do not upload automatically.
@@ -1799,8 +1753,13 @@ class MainActivity : Activity() {
             appendLine(step.expected)
             appendLine()
             appendLine(
-                "Perform the step, then tap the permanent Test button. " +
-                    "Choose Review Current Step when you are ready to verify it."
+                if (step.requiredEvidence.contains("DIAGNOSTIC_EXPORT_COMPLETED")) {
+                    "Tap Do Step to run the export. After it finishes, " +
+                        "the app will return to this step for verification."
+                } else {
+                    "Perform the step, then tap the permanent Test button " +
+                        "to return directly to this same step for verification."
+                }
             )
         }
 
@@ -1813,7 +1772,20 @@ class MainActivity : Activity() {
                     "STEP_INSTRUCTION_DISMISSED_FOR_ACTION",
                     mapOf("stepId" to step.id)
                 )
-                toast("Perform the step, then tap Test.")
+
+                if (step.requiredEvidence.contains("DIAGNOSTIC_EXPORT_COMPLETED")) {
+                    DiagnosticLogger.event(
+                        "TEST",
+                        "STEP_ACTION_LAUNCHED",
+                        mapOf(
+                            "stepId" to step.id,
+                            "action" to "export_diagnostics"
+                        )
+                    )
+                    exportDiagnostics()
+                } else {
+                    toast("Perform the step, then tap Test.")
+                }
             }
             .setNegativeButton("Cancel Test") { _, _ ->
                 GuidedTestController.cancel()
