@@ -189,3 +189,26 @@ Binary and ASCII STL now emit separate test evidence so one parser path cannot f
 DISPLAY_AUTOROTATE now requires objective evidence for actual camera movement, a speed-state change, and a direction-state change.
 
 Permanent rule: every important new feature must add/update its guided/regression test in the same version that introduces the feature.
+
+## v0.8.2 real device suite results
+
+Supplied diagnostic packages show:
+- VIEWER_CORE: PASS
+- DISPLAY_CONTROLS: PASS
+- ANIMATION: PASS
+- FORMAT_IMPORTS: PASS for all 12 current formats
+- FILE_WORKFLOW: PASS
+- ROBUSTNESS: first three steps PASS, Android Open With BLOCKED due to missing Open-With evidence
+- DIAGNOSTIC_SYSTEM: FAIL caused by an unreachable Export Diagnostics action while the guided test was active
+
+The DIAGNOSTIC_SYSTEM failure is a test-navigation false block, not an exporter failure. The package generated immediately afterward contains export_result.json with status COMPLETED.
+
+### v0.8.3 retest
+1. Start Diagnostics / export.
+2. Tap Test.
+3. Confirm the Active Test menu exposes Export Diagnostics.
+4. Choose Export Diagnostics.
+5. Confirm a non-empty ZIP is saved.
+6. Confirm the app automatically presents the current step review after export completes.
+7. Verify Result must PASS only after DIAGNOSTIC_EXPORT_COMPLETED evidence is present.
+8. Export the completed test diagnostics and confirm no loop occurs.
