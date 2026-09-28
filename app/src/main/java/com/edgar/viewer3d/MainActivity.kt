@@ -1622,66 +1622,85 @@ class MainActivity : Activity() {
             .show()
     }
 
-    private fun showHelp() {
-        if (GuidedTestController.isActive()) {
-            showGuidedStepReview()
-            return
-        }
+    private fun showTestingCenter() {
+        DiagnosticLogger.event(
+            "NAVIGATION",
+            "TESTING_CENTER_PRESENTED"
+        )
 
+        val options = arrayOf(
+            "Start Guided Test",
+            "Export Diagnostics",
+            "Help / Controls",
+            "Last Test Result"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Testing Center")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        DiagnosticLogger.event(
+                            "UI_ACTION",
+                            "GUIDED_TEST_MENU_REQUESTED"
+                        )
+                        showGuidedTestMenu()
+                    }
+                    1 -> exportDiagnostics()
+                    2 -> showHelp()
+                    3 -> showLastTestResult()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showHelp() {
         DiagnosticLogger.event("NAVIGATION", "HELP_PRESENTED")
+        val message = """
+            TOUCH
+            One finger: orbit.
+            Two fingers: pan and pinch zoom.
+
+            FILES
+            Open: choose a model from Android Files.
+            Recent: reopen a previously granted file.
+            Fit: reset framing.
+            Info: file, mesh, bounds and animation information.
+            Shot: save the rendered view as PNG.
+
+            MODEL / DISPLAY
+            Anim / Next: glTF animation controls.
+            Quality: Performance / Balanced / High.
+            Display: background, studio lighting, sun brightness,
+            Auto-rotate and Projection.
+            Auto-rotate: continuous turntable orbit with
+            Slow/Normal/Fast speed and Left/Right direction.
+            Touching the model stops Auto-rotate.
+            Projection: Perspective or true Orthographic viewing.
+
+            TESTING
+            Test: opens the Testing Center directly.
+            During a guided test, Test opens the current step review.
+            Export Diagnostics creates a local ZIP in
+            Downloads/3DViewerDiagnostics.
+            Diagnostics do not upload automatically.
+
+            SUPPORTED NOW
+            GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT,
+            AMF, X3D, ASCII PLY and OFF geometry.
+        """.trimIndent()
+
         AlertDialog.Builder(this)
             .setTitle("3D Viewer controls")
-            .setMessage(
-                """
-                One finger: orbit.
-                Two fingers: pan and pinch zoom.
-
-                Open: choose a model from Android Files.
-                Recent: reopen a previously granted file.
-                Fit: reset framing.
-                Info: file, mesh, bounds and animation information.
-                Shot: save the rendered view as PNG.
-                Anim / Next: glTF animation controls.
-                Quality: Performance / Balanced / High.
-                Display: background, studio lighting, sun brightness, Auto-rotate and Projection.
-                Auto-rotate: continuous turntable orbit with Slow/Normal/Fast speed
-                and Left/Right direction. Touching the model stops Auto-rotate so
-                normal orbit/pan/zoom immediately takes over.
-                Projection: switch between Perspective and true Orthographic viewing.
-
-                Test This Version: built-in guided tests with objective evidence plus
-                visual confirmation when needed.
-                Export Diagnostics: creates a local ZIP in Downloads/3DViewerDiagnostics.
-                Diagnostics do not upload automatically.
-
-                Supported now:
-                GLB, embedded glTF, STL, OBJ, 3MF, STEP/STP via OCCT, AMF, X3D,
-                ASCII PLY and OFF geometry.
-
-                Planned: measurements, wireframe/edges, named views, section planes,
-                exploded view, annotations, scene hierarchy, mesh diagnostics, AR
-                and additional CAD/model formats.
-                """.trimIndent()
-            )
+            .setView(scrollableDialogText(message))
             .setPositiveButton("OK", null)
-            .setNeutralButton("Test This Version") { _, _ ->
-                DiagnosticLogger.event(
-                    "UI_ACTION",
-                    "GUIDED_TEST_MENU_REQUESTED"
-                )
-                showGuidedTestMenu()
-            }
-            .setNegativeButton("Export Diagnostics") { _, _ ->
-                exportDiagnostics()
-            }
             .show()
     }
 
     private fun showGuidedTestMenu() {
         val definitions = GuidedTestController.definitions()
-        val labels = definitions.map {
-            it.title + " — " + it.description
-        }.toTypedArray()
+        val labels = definitions.map { it.title }.toTypedArray()
 
         DiagnosticLogger.event(
             "NAVIGATION",
@@ -1696,12 +1715,15 @@ class MainActivity : Activity() {
                 DiagnosticLogger.event(
                     "UI_ACTION",
                     "GUIDED_TEST_SELECTED",
-                    mapOf("testId" to definition.id, "title" to definition.title)
+                    mapOf(
+                        "testId" to definition.id,
+                        "title" to definition.title
+                    )
                 )
                 GuidedTestController.start(definition.id)
                 showGuidedStepInstruction()
             }
-            .setNegativeButton("Cancel") { _, _ ->
+            .setNegativeButton("Close") { _, _ ->
                 DiagnosticLogger.event(
                     "NAVIGATION",
                     "GUIDED_TEST_MENU_CANCELLED"
@@ -1720,6 +1742,7 @@ class MainActivity : Activity() {
 
         val stepNumber = GuidedTestController.currentStepNumber()
         val message = buildString {
+            appendLine("Test: " + test.title)
             appendLine("Step " + stepNumber + " of " + test.steps.size)
             appendLine()
             appendLine("WHAT TO DO")
@@ -1728,19 +1751,22 @@ class MainActivity : Activity() {
             appendLine("EXPECTED")
             appendLine(step.expected)
             appendLine()
-            appendLine("Perform the step, then tap Help to check the result.")
+            appendLine(
+                "Perform the step, then tap the permanent Test button " +
+                    "to review the result."
+            )
         }
 
         AlertDialog.Builder(this)
             .setTitle(step.title)
-            .setMessage(message)
+            .setView(scrollableDialogText(message))
             .setPositiveButton("Do Step") { _, _ ->
                 DiagnosticLogger.event(
                     "TEST",
                     "STEP_INSTRUCTION_DISMISSED_FOR_ACTION",
                     mapOf("stepId" to step.id)
                 )
-                toast("Perform the step, then tap Help.")
+                toast("Perform the step, then tap Test.")
             }
             .setNegativeButton("Cancel Test") { _, _ ->
                 GuidedTestController.cancel()
@@ -1767,11 +1793,16 @@ class MainActivity : Activity() {
         val evidenceText = if (missing.isEmpty()) {
             "Required software evidence: observed."
         } else {
-            "Required software evidence still missing: " + missing.joinToString(", ")
+            "Required software evidence still missing: " +
+                missing.joinToString(", ")
         }
 
         val message = buildString {
-            appendLine("Step " + GuidedTestController.currentStepNumber() + " of " + test.steps.size)
+            appendLine("Test: " + test.title)
+            appendLine(
+                "Step " + GuidedTestController.currentStepNumber() +
+                    " of " + test.steps.size
+            )
             appendLine()
             appendLine("EXPECTED")
             appendLine(step.expected)
@@ -1779,18 +1810,26 @@ class MainActivity : Activity() {
             appendLine(evidenceText)
             if (step.visualConfirmationRequired) {
                 appendLine()
-                appendLine("Confirm the visible behavior as well as the software evidence.")
+                appendLine(
+                    "Confirm the visible behavior as well as the " +
+                        "software evidence."
+                )
             }
         }
 
         AlertDialog.Builder(this)
             .setTitle("Check: " + step.title)
-            .setMessage(message)
+            .setView(scrollableDialogText(message))
             .setPositiveButton(
-                if (step.visualConfirmationRequired) "Looks Correct" else "Verify Result"
+                if (step.visualConfirmationRequired) {
+                    "Looks Correct"
+                } else {
+                    "Verify Result"
+                }
             ) { _, _ ->
                 if (!GuidedTestController.canPassCurrent()) {
-                    val stillMissing = GuidedTestController.missingEvidenceForCurrent()
+                    val stillMissing =
+                        GuidedTestController.missingEvidenceForCurrent()
                     DiagnosticLogger.warning(
                         "GUIDED_TEST_PASS_BLOCKED",
                         mapOf(
@@ -1800,9 +1839,12 @@ class MainActivity : Activity() {
                     )
                     AlertDialog.Builder(this)
                         .setTitle("Cannot pass this step yet")
-                        .setMessage(
-                            "The intended software result has not been observed yet. " +
-                                "Missing evidence: " + stillMissing.joinToString(", ")
+                        .setView(
+                            scrollableDialogText(
+                                "The intended software result has not " +
+                                    "been observed yet.\n\nMissing evidence: " +
+                                    stillMissing.joinToString(", ")
+                            )
                         )
                         .setPositiveButton("Continue Step") { _, _ ->
                             showGuidedStepInstruction()
@@ -1811,7 +1853,8 @@ class MainActivity : Activity() {
                 } else {
                     val passed = GuidedTestController.passCurrent(
                         if (step.visualConfirmationRequired) {
-                            "Objective evidence observed and tester confirmed the visible result."
+                            "Objective evidence observed and tester " +
+                                "confirmed the visible result."
                         } else {
                             "Objective software result verified."
                         }
@@ -1846,12 +1889,53 @@ class MainActivity : Activity() {
 
         AlertDialog.Builder(this)
             .setTitle("Test Result: " + statusValue.name)
-            .setMessage(message)
+            .setView(scrollableDialogText(message))
             .setPositiveButton("Export Test + Diagnostics") { _, _ ->
                 exportDiagnostics()
             }
             .setNegativeButton("Close", null)
             .show()
+    }
+
+    private fun showLastTestResult() {
+        val result = GuidedTestController.resultsJson()
+        val testId = result.optString("testId")
+        if (testId.isBlank()) {
+            toast("No guided test result is available yet.")
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Last Test Result")
+            .setView(
+                scrollableDialogText(
+                    GuidedTestController.summaryText()
+                )
+            )
+            .setPositiveButton("Export Diagnostics") { _, _ ->
+                exportDiagnostics()
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun scrollableDialogText(textValue: String): ScrollView {
+        val textView = TextView(this).apply {
+            text = textValue
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setPadding(dp(20), dp(12), dp(20), dp(18))
+        }
+        return ScrollView(this).apply {
+            isFillViewport = true
+            addView(
+                textView,
+                ScrollView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
     }
 
     private fun exportDiagnostics() {
