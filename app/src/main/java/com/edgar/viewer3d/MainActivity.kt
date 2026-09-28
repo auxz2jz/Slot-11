@@ -311,7 +311,7 @@ class MainActivity : Activity() {
         addButton(bottom, "Display") { showDisplayOptions() }
         addButton(bottom, "Test") {
             if (GuidedTestController.isActive()) {
-                showGuidedStepReview()
+                showActiveTestMenu()
             } else {
                 showTestingCenter()
             }
@@ -1622,6 +1622,51 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun showActiveTestMenu() {
+        val test = GuidedTestController.activeTest()
+        val step = GuidedTestController.currentStep()
+        if (test == null || step == null) {
+            showTestingCenter()
+            return
+        }
+
+        DiagnosticLogger.event(
+            "NAVIGATION",
+            "ACTIVE_TEST_MENU_PRESENTED",
+            mapOf(
+                "testId" to test.id,
+                "stepId" to step.id
+            )
+        )
+
+        val options = arrayOf(
+            "Review Current Step",
+            "Show Step Instructions",
+            "Export Diagnostics",
+            "Help / Controls",
+            "Cancel Test"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Active Test: " + test.title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showGuidedStepReview()
+                    1 -> showGuidedStepInstruction()
+                    2 -> exportDiagnostics()
+                    3 -> showHelp()
+                    4 -> {
+                        GuidedTestController.cancel(
+                            "Test cancelled from the Active Test menu."
+                        )
+                        showGuidedTestFinished()
+                    }
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
     private fun showTestingCenter() {
         DiagnosticLogger.event(
             "NAVIGATION",
@@ -1681,7 +1726,9 @@ class MainActivity : Activity() {
 
             TESTING
             Test: opens the Testing Center directly.
-            During a guided test, Test opens the current step review.
+            During a guided test, Test opens an Active Test menu.
+            That menu always provides Review Current Step, instructions,
+            Export Diagnostics, Help and Cancel Test.
             Export Diagnostics creates a local ZIP in
             Downloads/3DViewerDiagnostics.
             Diagnostics do not upload automatically.
@@ -1752,8 +1799,8 @@ class MainActivity : Activity() {
             appendLine(step.expected)
             appendLine()
             appendLine(
-                "Perform the step, then tap the permanent Test button " +
-                    "to review the result."
+                "Perform the step, then tap the permanent Test button. " +
+                    "Choose Review Current Step when you are ready to verify it."
             )
         }
 
@@ -1955,11 +2002,29 @@ class MainActivity : Activity() {
                             "byteSize" to result.byteSize
                         )
                     )
-                    toast(
-                        "Diagnostics saved: " +
-                            result.location +
-                            " (" + formatBytes(result.byteSize) + ")"
-                    )
+
+                    val activeStep = GuidedTestController.currentStep()
+                    val exportIsCurrentRequirement =
+                        GuidedTestController.isActive() &&
+                            activeStep?.requiredEvidence?.contains(
+                                "DIAGNOSTIC_EXPORT_COMPLETED"
+                            ) == true
+
+                    if (exportIsCurrentRequirement) {
+                        DiagnosticLogger.event(
+                            "TEST",
+                            "EXPORT_TEST_RESULT_READY_FOR_REVIEW",
+                            mapOf("stepId" to activeStep?.id)
+                        )
+                        toast("Diagnostics saved. Reviewing the export test.")
+                        showGuidedStepReview()
+                    } else {
+                        toast(
+                            "Diagnostics saved: " +
+                                result.location +
+                                " (" + formatBytes(result.byteSize) + ")"
+                        )
+                    }
                 }
             } catch (t: Throwable) {
                 DiagnosticLogger.error(
