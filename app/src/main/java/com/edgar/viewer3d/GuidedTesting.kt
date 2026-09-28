@@ -351,7 +351,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "DIAG_EXPORT",
                     title = "Export Diagnostics",
-                    instruction = "Tap Test, choose Export Diagnostics, and wait for the export to finish. The app should automatically return to this step's review after a successful export.",
+                    instruction = "Tap Do Step. The app will run Export Diagnostics for you, then automatically return to this step's review after a successful export.",
                     expected = "A non-empty diagnostic ZIP is successfully written to the local Downloads diagnostic folder.",
                     requiredEvidence = listOf("DIAGNOSTIC_EXPORT_COMPLETED"),
                     visualConfirmationRequired = false
