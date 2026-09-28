@@ -11,7 +11,8 @@
 - Projection-fix checkpoint: **v0.7.1 Perspective / Orthographic** (`candidate/v0.7.1-projection-fix-untested`)
 - Archived diagnostic candidate: **v0.8.0** (`archive/v0.8.0-diagnostics-export-defects`)
 - Diagnostic export checkpoint: **v0.8.1** (`candidate/v0.8.1-diagnostic-export-fix`)
-- Current development branch: **v0.8.2 testing UI + coverage** (`feature/testing-ui-v0.8.2`)
+- Tested v0.8.2 branch: **testing UI + coverage** (`feature/testing-ui-v0.8.2`)
+- Current development branch: **v0.8.3 active-test navigation fix** (`feature/testing-ui-v0.8.3`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -374,6 +375,38 @@ v0.8.2 scope:
 
 Future rule:
 Every important new feature must ship with its diagnostic events and a guided/regression test in the same feature version. A feature cannot move from CANDIDATE to VERIFIED without its defined test.
+
+## v0.8.2 on-device guided-test results
+The user ran the v0.8.2 guided suites and supplied exported diagnostic ZIPs.
+
+Verified PASS suites from supplied packages:
+- VIEWER_CORE: all 6 steps PASS;
+- DISPLAY_CONTROLS: all 6 steps PASS, including corrected Projection behavior;
+- ANIMATION: all 3 steps PASS;
+- FORMAT_IMPORTS: all 12 current format steps PASS (GLB, glTF, binary STL, ASCII STL, OBJ, 3MF, AMF, X3D, PLY, OFF, STEP, STP);
+- FILE_WORKFLOW: both steps PASS.
+
+ROBUSTNESS:
+- model replacement PASS;
+- invalid-file safe failure PASS;
+- recovery after failure PASS;
+- Android Open With BLOCKED in that run because required OPEN_WITH_RECEIVED / MODEL_DISPLAYED evidence was not observed.
+
+DIAGNOSTIC_SYSTEM:
+- guided step FAIL due to a test-navigation design defect;
+- while a guided test was active, the permanent Test button opened only the current-step review;
+- the test instruction required Test → Export Diagnostics, but Export Diagnostics was unreachable while the test was active;
+- the user correctly pressed Expected Behavior Failed;
+- the subsequent exported package itself contains export_result.json with status COMPLETED, proving the exporter worked and the first real failure was the guided-test navigation path, not ZIP creation.
+
+v0.8.3 corrective scope:
+- during any active guided test, Test opens an Active Test menu;
+- menu always exposes Review Current Step, Show Step Instructions, Export Diagnostics, Help / Controls, and Cancel Test;
+- DIAGNOSTIC_SYSTEM instruction uses that reachable path;
+- after a successful export when DIAGNOSTIC_EXPORT_COMPLETED is the current required evidence, the app automatically opens the step review;
+- test criteria are unchanged; no threshold/evidence weakening.
+
+The next named-views feature must inherit this v0.8.3 navigation correction before release.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
