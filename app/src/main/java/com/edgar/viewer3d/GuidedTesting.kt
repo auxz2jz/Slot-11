@@ -169,7 +169,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "ANIM_LOAD",
                     title = "Load animated model",
-                    instruction = "Open a GLB/glTF model that contains at least two animation clips.",
+                    instruction = "Open 13_ANIMATED_GLB_CYLINDER_3_CLIPS.glb or 14_ANIMATED_GLTF_STAR_3_CLIPS.gltf from the distinct-object test pack.",
                     expected = "The displayed model reports two or more animations.",
                     requiredEvidence = listOf("ANIMATED_MODEL_LOADED"),
                     visualConfirmationRequired = true
@@ -200,7 +200,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_GLB",
                     title = "GLB",
-                    instruction = "Open test_object.glb from the supported-format test pack.",
+                    instruction = "Open 01_GLB_BLUE_PYRAMID.glb from the distinct-object test pack.",
                     expected = "The GLB is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_GLB"),
                     visualConfirmationRequired = true
@@ -208,7 +208,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_GLTF",
                     title = "Embedded glTF",
-                    instruction = "Open test_object.gltf.",
+                    instruction = "Open 02_GLTF_ORANGE_HOUSE.gltf.",
                     expected = "The embedded-resource glTF is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_GLTF"),
                     visualConfirmationRequired = true
@@ -216,7 +216,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_STL_BINARY",
                     title = "Binary STL",
-                    instruction = "Open test_object_binary.stl.",
+                    instruction = "Open 03_STL_BINARY_WEDGE.stl.",
                     expected = "The binary STL parser path is used and the model is displayed.",
                     requiredEvidence = listOf(
                         "STL_BINARY_PARSED",
@@ -227,7 +227,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_STL_ASCII",
                     title = "ASCII STL",
-                    instruction = "Open test_object_ascii.stl.",
+                    instruction = "Open 04_STL_ASCII_ARROW.stl.",
                     expected = "The ASCII STL parser path is used and the model is displayed.",
                     requiredEvidence = listOf(
                         "STL_ASCII_PARSED",
@@ -238,7 +238,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_OBJ",
                     title = "OBJ",
-                    instruction = "Open test_object.obj.",
+                    instruction = "Open 05_OBJ_PLUS_SIGN.obj.",
                     expected = "OBJ geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_OBJ"),
                     visualConfirmationRequired = true
@@ -246,7 +246,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_3MF",
                     title = "3MF",
-                    instruction = "Open test_object.3mf.",
+                    instruction = "Open 06_3MF_STAIRCASE.3mf.",
                     expected = "3MF geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_3MF"),
                     visualConfirmationRequired = true
@@ -254,7 +254,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_AMF",
                     title = "AMF",
-                    instruction = "Open test_object.amf.",
+                    instruction = "Open 07_AMF_TIERED_TOWER.amf.",
                     expected = "AMF geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_AMF"),
                     visualConfirmationRequired = true
@@ -262,7 +262,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_X3D",
                     title = "X3D",
-                    instruction = "Open test_object.x3d.",
+                    instruction = "Open 08_X3D_DIAMOND.x3d.",
                     expected = "X3D geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_X3D"),
                     visualConfirmationRequired = true
@@ -270,7 +270,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_PLY",
                     title = "ASCII PLY",
-                    instruction = "Open test_object.ply.",
+                    instruction = "Open 09_PLY_L_SHAPE.ply.",
                     expected = "ASCII PLY geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_PLY"),
                     visualConfirmationRequired = true
@@ -278,7 +278,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_OFF",
                     title = "OFF",
-                    instruction = "Open test_object.off.",
+                    instruction = "Open 10_OFF_T_SHAPE.off.",
                     expected = "OFF geometry is actually displayed.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_OFF"),
                     visualConfirmationRequired = true
@@ -286,7 +286,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_STEP",
                     title = "STEP",
-                    instruction = "Open test_object.step.",
+                    instruction = "Open 11_STEP_BRIDGE.step.",
                     expected = "OCCT imports and displays non-empty STEP geometry.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_STEP"),
                     visualConfirmationRequired = true
@@ -294,7 +294,7 @@ object GuidedTestController {
                 GuidedTestStep(
                     id = "FORMAT_STP",
                     title = "STP",
-                    instruction = "Open test_object.stp.",
+                    instruction = "Open 12_STP_STAR.stp.",
                     expected = "OCCT imports and displays non-empty STP geometry through the same CAD path.",
                     requiredEvidence = listOf("MODEL_DISPLAYED_STP"),
                     visualConfirmationRequired = true
@@ -355,6 +355,69 @@ object GuidedTestController {
                     expected = "A non-empty diagnostic ZIP is successfully written to the local Downloads diagnostic folder.",
                     requiredEvidence = listOf("DIAGNOSTIC_EXPORT_COMPLETED"),
                     visualConfirmationRequired = false
+                )
+            )
+        ),
+        "NAMED_VIEWS" to GuidedTestDefinition(
+            id = "NAMED_VIEWS",
+            title = "Named camera views",
+            description = "Front, Back, Left, Right, Top, Bottom and Isometric camera presets.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "VIEW_FRONT",
+                    title = "Front view",
+                    instruction = "Open Display → Named views → Front.",
+                    expected = "The model snaps to the verified Front camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_FRONT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_BACK",
+                    title = "Back view",
+                    instruction = "Open Display → Named views → Back.",
+                    expected = "The model snaps to the verified Back camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_BACK"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_LEFT",
+                    title = "Left view",
+                    instruction = "Open Display → Named views → Left.",
+                    expected = "The model snaps to the verified Left camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_LEFT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_RIGHT",
+                    title = "Right view",
+                    instruction = "Open Display → Named views → Right.",
+                    expected = "The model snaps to the verified Right camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_RIGHT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_TOP",
+                    title = "Top view",
+                    instruction = "Open Display → Named views → Top.",
+                    expected = "The model snaps to the verified Top camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_TOP"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_BOTTOM",
+                    title = "Bottom view",
+                    instruction = "Open Display → Named views → Bottom.",
+                    expected = "The model snaps to the verified Bottom camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_BOTTOM"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_ISOMETRIC",
+                    title = "Isometric view",
+                    instruction = "Open Display → Named views → Isometric.",
+                    expected = "The model snaps to the verified Isometric camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_ISOMETRIC"),
+                    visualConfirmationRequired = true
                 )
             )
         ),
