@@ -135,7 +135,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** build/device-test v0.8.1, rerun a guided test, export diagnostics, and verify the ZIP contains `export_result.json`, terminal guided-test state has no stale current-step evidence, and normal viewer behavior remains intact. Then run DISPLAY_CONTROLS to retest the inherited v0.7.1 projection fix.
+**Exact next development/test action:** finish the v0.8.1 build, then build v0.8.2 with direct Test access and expanded coverage. After a clean compile, create the next feature version for named Front/Back/Left/Right/Top/Bottom/Isometric views, including its guided test in the same version.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
