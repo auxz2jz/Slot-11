@@ -189,3 +189,15 @@ Binary and ASCII STL now emit separate test evidence so one parser path cannot f
 DISPLAY_AUTOROTATE now requires objective evidence for actual camera movement, a speed-state change, and a direction-state change.
 
 Permanent rule: every important new feature must add/update its guided/regression test in the same version that introduces the feature.
+
+### NAMED_VIEWS
+v0.9.0 adds a dedicated seven-step guided suite:
+- VIEW_FRONT
+- VIEW_BACK
+- VIEW_LEFT
+- VIEW_RIGHT
+- VIEW_TOP
+- VIEW_BOTTOM
+- VIEW_ISOMETRIC
+
+Each command must produce objective camera-direction evidence with a dot-product threshold before the tester can mark the visible result correct. This is the required test for the v0.9.0 named-view feature.
