@@ -10,8 +10,34 @@ object StlParser {
             bb.position(80)
             val count = bb.int.toLong() and 0xffffffffL
             val expected = 84L + count * 50L
-            if (count > 0 && expected <= bytes.size.toLong()) return parseBinary(name, bytes, count.toInt())
+            if (count > 0 && expected <= bytes.size.toLong()) {
+                DiagnosticLogger.event(
+                    "PROCESSING",
+                    "STL_BINARY_DETECTED",
+                    mapOf(
+                        "displayName" to name,
+                        "triangleCount" to count
+                    )
+                )
+                GuidedTestController.recordEvidence(
+                    "STL_BINARY_PARSED",
+                    mapOf(
+                        "displayName" to name,
+                        "triangleCount" to count
+                    )
+                )
+                return parseBinary(name, bytes, count.toInt())
+            }
         }
+        DiagnosticLogger.event(
+            "PROCESSING",
+            "STL_ASCII_DETECTED",
+            mapOf("displayName" to name)
+        )
+        GuidedTestController.recordEvidence(
+            "STL_ASCII_PARSED",
+            mapOf("displayName" to name)
+        )
         return parseAscii(name, bytes.toString(Charsets.UTF_8))
     }
 
