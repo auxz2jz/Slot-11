@@ -24,6 +24,7 @@ import android.view.WindowInsets
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.filament.Camera
@@ -120,10 +121,15 @@ class MainActivity : Activity() {
         choreographer = Choreographer.getInstance()
         if (intent?.action == Intent.ACTION_VIEW) {
             intent.data?.let { uri ->
+                val openWithName = displayName(uri) ?: "model"
                 DiagnosticLogger.event(
                     "FILE",
                     "OPEN_WITH_RECEIVED",
-                    mapOf("displayName" to (displayName(uri) ?: "model"))
+                    mapOf("displayName" to openWithName)
+                )
+                GuidedTestController.recordEvidence(
+                    "OPEN_WITH_RECEIVED",
+                    mapOf("displayName" to openWithName)
                 )
                 loadUri(uri, source = "open_with")
             }
@@ -171,10 +177,15 @@ class MainActivity : Activity() {
         setIntent(intent)
         if (intent.action == Intent.ACTION_VIEW) {
             intent.data?.let { uri ->
+                val openWithName = displayName(uri) ?: "model"
                 DiagnosticLogger.event(
                     "FILE",
                     "OPEN_WITH_RECEIVED",
-                    mapOf("displayName" to (displayName(uri) ?: "model"))
+                    mapOf("displayName" to openWithName)
+                )
+                GuidedTestController.recordEvidence(
+                    "OPEN_WITH_RECEIVED",
+                    mapOf("displayName" to openWithName)
                 )
                 loadUri(uri, source = "open_with")
             }
@@ -298,7 +309,13 @@ class MainActivity : Activity() {
         addButton(bottom, "Next") { nextAnimation() }
         addButton(bottom, "Quality") { cycleQuality() }
         addButton(bottom, "Display") { showDisplayOptions() }
-        addButton(bottom, "Help") { showHelp() }
+        addButton(bottom, "Test") {
+            if (GuidedTestController.isActive()) {
+                showGuidedStepReview()
+            } else {
+                showTestingCenter()
+            }
+        }
         root.addView(bottom, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(46), Gravity.BOTTOM
         ))
@@ -518,6 +535,10 @@ class MainActivity : Activity() {
                 requestId = parentRequestId,
                 operationId = operationId
             )
+            GuidedTestController.recordEvidence(
+                "UNSUPPORTED_FILE_REJECTED",
+                mapOf("displayName" to name, "extension" to extension)
+            )
             toast("Unsupported extension. Use GLB, glTF, STL, OBJ, 3MF, STEP/STP, AMF, X3D, PLY, or OFF.")
             return
         }
@@ -616,6 +637,14 @@ class MainActivity : Activity() {
                 )
                 runOnUiThread {
                     status.text = "Load failed"
+                    GuidedTestController.recordEvidence(
+                        "MODEL_LOAD_FAILED_SAFELY",
+                        mapOf(
+                            "displayName" to name,
+                            "extension" to extension,
+                            "stage" to "import"
+                        )
+                    )
                     DiagnosticLogger.event(
                         "STATE",
                         "MODEL_LOAD_STATE_CHANGED",
@@ -726,15 +755,32 @@ class MainActivity : Activity() {
                 mapOf("stateBefore" to "loading", "stateAfter" to "displayed"),
                 operationId = operationId
             )
+            val extensionEvidence = ModelImporter.extension(name)
+                .uppercase(Locale.US)
+                .replace(".", "_")
+            val displayEvidenceDetails = mapOf(
+                "displayName" to name,
+                "format" to prepared.stats.format,
+                "triangles" to prepared.stats.triangles,
+                "animations" to animationCount
+            )
             GuidedTestController.recordEvidence(
                 "MODEL_DISPLAYED",
-                mapOf(
-                    "displayName" to name,
-                    "format" to prepared.stats.format,
-                    "triangles" to prepared.stats.triangles,
-                    "animations" to animationCount
-                )
+                displayEvidenceDetails
             )
+            GuidedTestController.recordEvidence(
+                "MODEL_DISPLAYED_" + extensionEvidence,
+                displayEvidenceDetails
+            )
+            if (previousName != "No model" && previousName != name) {
+                GuidedTestController.recordEvidence(
+                    "MODEL_REPLACED",
+                    mapOf(
+                        "previousModel" to previousName,
+                        "newModel" to name
+                    )
+                )
+            }
             if (animationCount >= 2) {
                 GuidedTestController.recordEvidence(
                     "ANIMATED_MODEL_LOADED",
@@ -753,6 +799,14 @@ class MainActivity : Activity() {
                     "source" to source
                 ),
                 operationId = operationId
+            )
+            GuidedTestController.recordEvidence(
+                "MODEL_LOAD_FAILED_SAFELY",
+                mapOf(
+                    "displayName" to name,
+                    "extension" to ModelImporter.extension(name),
+                    "stage" to "display"
+                )
             )
             DiagnosticLogger.event(
                 "STATE",
@@ -988,6 +1042,10 @@ class MainActivity : Activity() {
                         "AUTO_ROTATE_SPEED_CHANGED",
                         mapOf("oldValue" to oldSpeed, "newValue" to newSpeed)
                     )
+                    GuidedTestController.recordEvidence(
+                        "AUTO_ROTATE_SPEED_CHANGED",
+                        mapOf("oldValue" to oldSpeed, "newValue" to newSpeed)
+                    )
                     toast("Auto-rotate speed: " + newSpeed)
                 }
                 11 -> {
@@ -997,6 +1055,10 @@ class MainActivity : Activity() {
                     val newDirection = autoRotateDirectionName()
                     DiagnosticLogger.event(
                         "STATE",
+                        "AUTO_ROTATE_DIRECTION_CHANGED",
+                        mapOf("oldValue" to oldDirection, "newValue" to newDirection)
+                    )
+                    GuidedTestController.recordEvidence(
                         "AUTO_ROTATE_DIRECTION_CHANGED",
                         mapOf("oldValue" to oldDirection, "newValue" to newDirection)
                     )
@@ -1802,6 +1864,13 @@ class MainActivity : Activity() {
             try {
                 val result = DiagnosticExporter.export(this)
                 runOnUiThread {
+                    GuidedTestController.recordEvidence(
+                        "DIAGNOSTIC_EXPORT_COMPLETED",
+                        mapOf(
+                            "location" to result.location,
+                            "byteSize" to result.byteSize
+                        )
+                    )
                     toast(
                         "Diagnostics saved: " +
                             result.location +
