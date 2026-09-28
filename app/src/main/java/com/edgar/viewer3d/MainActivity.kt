@@ -1930,7 +1930,7 @@ class MainActivity : Activity() {
             isFillViewport = true
             addView(
                 textView,
-                ScrollView.LayoutParams(
+                ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
