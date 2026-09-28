@@ -358,6 +358,69 @@ object GuidedTestController {
                 )
             )
         ),
+        "NAMED_VIEWS" to GuidedTestDefinition(
+            id = "NAMED_VIEWS",
+            title = "Named camera views",
+            description = "Front, Back, Left, Right, Top, Bottom and Isometric camera presets.",
+            steps = listOf(
+                GuidedTestStep(
+                    id = "VIEW_FRONT",
+                    title = "Front view",
+                    instruction = "Open Display → Named views → Front.",
+                    expected = "The model snaps to the verified Front camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_FRONT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_BACK",
+                    title = "Back view",
+                    instruction = "Open Display → Named views → Back.",
+                    expected = "The model snaps to the verified Back camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_BACK"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_LEFT",
+                    title = "Left view",
+                    instruction = "Open Display → Named views → Left.",
+                    expected = "The model snaps to the verified Left camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_LEFT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_RIGHT",
+                    title = "Right view",
+                    instruction = "Open Display → Named views → Right.",
+                    expected = "The model snaps to the verified Right camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_RIGHT"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_TOP",
+                    title = "Top view",
+                    instruction = "Open Display → Named views → Top.",
+                    expected = "The model snaps to the verified Top camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_TOP"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_BOTTOM",
+                    title = "Bottom view",
+                    instruction = "Open Display → Named views → Bottom.",
+                    expected = "The model snaps to the verified Bottom camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_BOTTOM"),
+                    visualConfirmationRequired = true
+                ),
+                GuidedTestStep(
+                    id = "VIEW_ISOMETRIC",
+                    title = "Isometric view",
+                    instruction = "Open Display → Named views → Isometric.",
+                    expected = "The model snaps to the verified Isometric camera direction.",
+                    requiredEvidence = listOf("NAMED_VIEW_ISOMETRIC"),
+                    visualConfirmationRequired = true
+                )
+            )
+        ),
         "FILE_WORKFLOW" to GuidedTestDefinition(
             id = "FILE_WORKFLOW",
             title = "File workflow",
