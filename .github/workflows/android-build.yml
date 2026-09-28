@@ -10,6 +10,7 @@ on:
       - feature/projection-v0.7.1
       - feature/diagnostics-v0.8.0
       - feature/diagnostics-v0.8.1
+      - feature/testing-ui-v0.8.2
   workflow_dispatch:
 
 permissions:
@@ -109,7 +110,7 @@ jobs:
           retention-days: 30
 
   build:
-    name: Build v0.8.1 APK
+    name: Build v0.8.2 APK
     needs: occt
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -166,7 +167,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Android3DViewer-v0.8.1-debug-arm64
+          name: Android3DViewer-v0.8.2-debug-arm64
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
