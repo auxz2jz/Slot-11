@@ -11,7 +11,8 @@
 - Projection-fix checkpoint: **v0.7.1 Perspective / Orthographic** (`candidate/v0.7.1-projection-fix-untested`)
 - Archived diagnostic candidate: **v0.8.0** (`archive/v0.8.0-diagnostics-export-defects`)
 - Diagnostic export checkpoint: **v0.8.1** (`candidate/v0.8.1-diagnostic-export-fix`)
-- Current development branch: **v0.8.2 testing UI + coverage** (`feature/testing-ui-v0.8.2`)
+- Testing UI candidate source: **v0.8.2** (`feature/testing-ui-v0.8.2`)
+- Current development branch: **v0.9.0 named camera views** (`feature/named-views-v0.9.0`)
 - Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
@@ -374,6 +375,26 @@ v0.8.2 scope:
 
 Future rule:
 Every important new feature must ship with its diagnostic events and a guided/regression test in the same feature version. A feature cannot move from CANDIDATE to VERIFIED without its defined test.
+
+## v0.9.0 named camera views plan
+Next viewer feature after the testing-access pass:
+- Front
+- Back
+- Left
+- Right
+- Top
+- Bottom
+- Isometric
+
+Implementation design:
+- expose **Named views...** from Display without removing existing controls;
+- use the same Filament ORBIT Manipulator already used by manual touch;
+- reset to the known home framing before applying a deterministic orbit angle;
+- explicitly keep orbit speed at the Filament default 0.01 rad/pixel so named-view angle synthesis is deterministic;
+- stop Auto-rotate before applying a named view;
+- preserve Perspective/Orthographic mode;
+- objectively verify the resulting eye direction against the expected named-view direction before recording guided-test evidence;
+- add a permanent NAMED_VIEWS guided suite with one step for each named view in this same feature version.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
