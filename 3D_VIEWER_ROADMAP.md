@@ -160,11 +160,12 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - CANDIDATE v0.8.0 Persistent structured JSONL diagnostic sessions with request/operation correlation and bounded recent history; device validation pending.
 - CANDIDATE v0.8.0 Central error logging + global uncaught-crash preservation with prior event trail; device validation pending.
 - CANDIDATE v0.8.0 Explicit local Export Diagnostics ZIP with safe metadata/privacy controls; device validation pending.
-- CANDIDATE v0.8.0 Guided **Test This Version** workflow with evidence-gated PASS, visual confirmation, failure controls, persisted interrupted-step state, TXT/JSON results; device validation pending.
+- CANDIDATE v0.8.2 Guided **Test This Version** workflow with direct toolbar access, scrollable dialogs, evidence-gated PASS, visual confirmation, failure controls, persisted interrupted-step state, expanded format/robustness/diagnostic suites, and TXT/JSON results; device validation pending.
 - PARTIAL v0.8.0 Previous crash record/event trail is preserved for diagnostics; full user-state/session restoration remains TODO.
 - PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
 
 ## 12. Development safeguards
+- REQUIRED Every important new feature must add/update its guided/regression test, result evidence, PASS/FAIL criteria, and diagnostics in the same feature version.
 - DONE Adopt current Master Instruction Library mapping/documentation without moving working Android source.
 - DONE Preserve exact v0.4.0 user-verified checkpoint on `stable/v0.4.0-tested`.
 - DONE Separate v0.5.0 STEP candidate from verified baseline.
