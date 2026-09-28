@@ -22,7 +22,8 @@ Later feature-specific verification:
 - v0.7.0 Projection: failed device test
 - v0.7.1 Projection fix: built/checkpointed, device retest pending
 - v0.8.0 Diagnostics/guided testing: VIEWER_CORE user run PASS; export-result metadata defects found
-- v0.8.1 Diagnostics export/result fix: candidate, device validation required
+- v0.8.1 Diagnostics export/result fix: checkpointed; build/device validation pending
+- v0.8.2 Testing UI + coverage: candidate; direct Test access and expanded guided suites
 
 Compilation success is never user verification.
 
@@ -171,3 +172,20 @@ v0.8.1 retest requirements:
 - confirm export_result.json exists and reports COMPLETED;
 - confirm the package event trace includes the export persistence stage;
 - confirm no new errors/warnings are introduced by the export finalization pass.
+
+## v0.8.2 testing access / coverage
+
+User feedback showed that Test This Version was too hidden under Help and long dialogs were awkward to scroll. v0.8.2 changes the permanent bottom toolbar so **Test** is directly available. During an active test, that same button opens the current step review. Help and Export Diagnostics remain available through a compact Testing Center.
+
+Long Help, step-instruction, step-review, and result content now use explicit ScrollView-backed dialog content rather than relying on default message scrolling.
+
+Additional permanent guided suites:
+- FORMAT_IMPORTS — GLB, embedded glTF, binary STL, ASCII STL, OBJ, 3MF, AMF, X3D, ASCII PLY, OFF, STEP, STP
+- ROBUSTNESS — replace model, invalid supported file, recover with valid model, Android Open With
+- DIAGNOSTIC_SYSTEM — verified local diagnostic export
+
+Binary and ASCII STL now emit separate test evidence so one parser path cannot falsely pass the other.
+
+DISPLAY_AUTOROTATE now requires objective evidence for actual camera movement, a speed-state change, and a direction-state change.
+
+Permanent rule: every important new feature must add/update its guided/regression test in the same version that introduces the feature.
