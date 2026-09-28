@@ -400,10 +400,11 @@ DIAGNOSTIC_SYSTEM:
 - the subsequent exported package itself contains export_result.json with status COMPLETED, proving the exporter worked and the first real failure was the guided-test navigation path, not ZIP creation.
 
 v0.8.3 corrective scope:
-- during any active guided test, Test opens an Active Test menu;
-- menu always exposes Review Current Step, Show Step Instructions, Export Diagnostics, Help / Controls, and Cancel Test;
-- DIAGNOSTIC_SYSTEM instruction uses that reachable path;
-- after a successful export when DIAGNOSTIC_EXPORT_COMPLETED is the current required evidence, the app automatically opens the step review;
+- while a guided test is active, Test continues to return directly to the current step review so the user's place is preserved;
+- the user does not re-enter the test-selection menu or restart the test;
+- DIAGNOSTIC_SYSTEM's Do Step button launches Export Diagnostics directly;
+- after a successful export when DIAGNOSTIC_EXPORT_COMPLETED is the current required evidence, the app automatically opens the same step review;
+- after PASS, the controller advances to the next step as before;
 - test criteria are unchanged; no threshold/evidence weakening.
 
 The next named-views feature must inherit this v0.8.3 navigation correction before release.
