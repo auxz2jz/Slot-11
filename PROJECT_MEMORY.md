@@ -12,8 +12,9 @@
 - Archived diagnostic candidate: **v0.8.0** (`archive/v0.8.0-diagnostics-export-defects`)
 - Diagnostic export checkpoint: **v0.8.1** (`candidate/v0.8.1-diagnostic-export-fix`)
 - Tested v0.8.2 branch: **testing UI + coverage** (`feature/testing-ui-v0.8.2`)
-- Current development branch: **v0.8.3 active-test navigation fix** (`feature/testing-ui-v0.8.3`)
-- Latest candidate status: **CANDIDATE — CI BUILD SUCCEEDED, NOT USER VERIFIED**
+- User-tested v0.8.3 checkpoint: **guided-test progress + diagnostic-export loop fix** (`candidate/v0.8.3-user-tested`)
+- Current development branch: **v0.9.0 named camera views** (`feature/named-views-v0.9.0`)
+- Latest candidate status: **v0.9.0 CANDIDATE — source implemented; CI/device validation in progress**
 - Successful v0.5.0 build source commit: `5625660add9ee76d708ba90acf83e1729e0f493a`
 - Successful v0.5.0 GitHub Actions run: `36184091026`
 - v0.5.0 APK artifact ID: `10886586045`
@@ -136,7 +137,7 @@ Current task: adopt the Master Instruction Library without changing verified beh
 
 Adoption documentation is complete. No Android source was changed by the adoption itself.
 
-**Exact next development/test action:** finish the v0.8.1 build, then build v0.8.2 with direct Test access and expanded coverage. After a clean compile, create the next feature version for named Front/Back/Left/Right/Top/Bottom/Isometric views, including its guided test in the same version.
+**Exact next development/test action:** build v0.9.0, then device-test Front/Back/Left/Right/Top/Bottom/Isometric through the NAMED_VIEWS guided suite. Preserve the v0.8.3 direct current-step return behavior during all tests.
 
 ## v0.5.1 STL picker compatibility candidate
 User screenshot evidence on 2026-09-26 shows both generated STL fixtures visible in Android Files but **greyed out / unselectable** while other formats remain selectable. This confirms the failure occurs at Android document-picker filtering before `StlParser` receives the file.
@@ -408,6 +409,38 @@ v0.8.3 corrective scope:
 - test criteria are unchanged; no threshold/evidence weakening.
 
 The next named-views feature must inherit this v0.8.3 navigation correction before release.
+
+## v0.9.0 named camera views
+Built on the user-tested v0.8.3 testing/navigation checkpoint.
+
+Feature scope:
+- Display → Named views...
+- Front
+- Back
+- Left
+- Right
+- Top
+- Bottom
+- Isometric
+
+Implementation:
+- uses the existing Filament ORBIT Manipulator;
+- explicitly pins orbit speed to 0.01 rad/pixel so deterministic angle synthesis matches Filament's configured control sensitivity;
+- stops Auto-rotate before applying a preset;
+- resets to the known home framing, applies the target orbit, then verifies the resulting eye direction mathematically;
+- records NAMED_VIEW_* guided-test evidence only when the camera direction dot-product is at least 0.97;
+- preserves Perspective/Orthographic mode and re-applies Orthographic projection when needed;
+- no importer or renderer replacement.
+
+Testing:
+- permanent NAMED_VIEWS suite has seven steps, one for each named view;
+- every step requires objective NAMED_VIEW_* evidence plus visual confirmation;
+- format/animation test instructions now reference the distinct-object regression pack:
+  01 GLB Blue Pyramid, 02 glTF Orange House, 03 Binary STL Wedge,
+  04 ASCII STL Arrow, 05 OBJ Plus Sign, 06 3MF Staircase,
+  07 AMF Tiered Tower, 08 X3D Diamond, 09 PLY L Shape,
+  10 OFF T Shape, 11 STEP Bridge, 12 STP Star,
+  plus distinct animated GLB Cylinder and animated glTF Star fixtures.
 
 ## Anti-loop / development rules
 1. Never silently remove a working format or feature to fix another feature.
