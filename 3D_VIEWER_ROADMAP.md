@@ -22,7 +22,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - DONE glTF animation play/pause and next animation — user-verified with a three-clip GLB fixture.
 - DONE v0.6.0 Auto-rotate / turntable with Slow/Normal/Fast speed and Left/Right direction — user-verified.
 - CANDIDATE v0.7.1 Perspective / Orthographic projection switch with corrected orthographic framing/zoom; device retest pending.
-- TODO Front/back/left/right/top/bottom/isometric named views.
+- CANDIDATE v0.9.0 Front/Back/Left/Right/Top/Bottom/Isometric named views with objective camera-direction verification and a seven-step guided test; device validation pending.
 - TODO Save/restore camera bookmarks.
 
 ## 2. File formats
@@ -160,7 +160,7 @@ Legend: **DONE**, **PARTIAL**, **TODO**
 - CANDIDATE v0.8.0 Persistent structured JSONL diagnostic sessions with request/operation correlation and bounded recent history; device validation pending.
 - CANDIDATE v0.8.0 Central error logging + global uncaught-crash preservation with prior event trail; device validation pending.
 - CANDIDATE v0.8.0 Explicit local Export Diagnostics ZIP with safe metadata/privacy controls; device validation pending.
-- CANDIDATE v0.8.2 Guided **Test This Version** workflow with direct toolbar access, scrollable dialogs, evidence-gated PASS, visual confirmation, failure controls, persisted interrupted-step state, expanded format/robustness/diagnostic suites, and TXT/JSON results; device validation pending.
+- USER-TESTED v0.8.3 Guided **Test This Version** workflow with direct toolbar access, scrollable dialogs, direct return to the current step, evidence-gated PASS, expanded format/robustness/diagnostic suites, and corrected Diagnostics / Export flow.
 - PARTIAL v0.8.0 Previous crash record/event trail is preserved for diagnostics; full user-state/session restoration remains TODO.
 - PARTIAL Automated importer fixtures and parser tests: real-world STL/OBJ/3MF regression corpus inspected manually; repository-safe generated fixtures still needed.
 
